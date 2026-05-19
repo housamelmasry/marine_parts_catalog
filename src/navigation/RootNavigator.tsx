@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../hooks/useTheme';
 import { useUIStore, Screen } from '../app/store';
 import { Text } from '../shared/ui/Text';
+import { useTranslation } from '../utils/i18n';
 
 // Screens imports
 import { ProductListScreen } from '../features/products/screens/ProductListScreen';
@@ -17,6 +18,7 @@ export const RootNavigator: React.FC = () => {
   const { colors, spacing } = useTheme();
   const { currentScreen, navigateTo } = useUIStore();
   const insets = useSafeAreaInsets();
+  const { t, isRTL } = useTranslation();
 
   const renderActiveScreen = () => {
     switch (currentScreen) {
@@ -72,6 +74,7 @@ export const RootNavigator: React.FC = () => {
             borderTopColor: colors.border,
             paddingBottom: Platform.OS === 'ios' ? insets.bottom : spacing.md,
             paddingTop: spacing.md,
+            flexDirection: isRTL ? 'row-reverse' : 'row',
           },
         ]}
       >
@@ -86,7 +89,7 @@ export const RootNavigator: React.FC = () => {
             weight="bold"
             color={activeTab === 'home' ? colors.primary : colors.textSecondary}
           >
-            Home
+            {t('home')}
           </Text>
         </Pressable>
 
@@ -101,7 +104,7 @@ export const RootNavigator: React.FC = () => {
             weight="bold"
             color={activeTab === 'add' ? colors.primary : colors.textSecondary}
           >
-            Add
+            {t('add')}
           </Text>
         </Pressable>
 
@@ -116,7 +119,7 @@ export const RootNavigator: React.FC = () => {
             weight="bold"
             color={activeTab === 'settings' ? colors.primary : colors.textSecondary}
           >
-            Settings
+            {t('settings')}
           </Text>
         </Pressable>
       </View>

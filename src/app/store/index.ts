@@ -17,6 +17,10 @@ interface UIState {
   theme: 'dark' | 'light';
   toggleTheme: () => void;
 
+  // Language state
+  language: 'ar' | 'en';
+  setLanguage: (lang: 'ar' | 'en') => void;
+
   // Search & Filter UI state
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -38,6 +42,7 @@ interface UIState {
 export const useUIStore = create<UIState>((set) => ({
   // Initialize state
   theme: (storage.getItem('theme') as 'dark' | 'light') || 'dark',
+  language: (storage.getItem('language') as 'ar' | 'en') || 'ar',
   searchQuery: '',
   selectedTag: 'All',
   selectedProduct: null,
@@ -48,6 +53,11 @@ export const useUIStore = create<UIState>((set) => ({
     const nextTheme = state.theme === 'dark' ? 'light' : 'dark';
     storage.setItem('theme', nextTheme);
     return { theme: nextTheme };
+  }),
+
+  setLanguage: (lang) => set(() => {
+    storage.setItem('language', lang);
+    return { language: lang };
   }),
 
   setSearchQuery: (query) => set({ searchQuery: query }),
