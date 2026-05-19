@@ -94,14 +94,27 @@ export const ProductListScreen: React.FC = () => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Premium Top Custom Header matching Screen 1 mockup exactly */}
-      <View style={[styles.customHeader, { paddingTop: insets.top + spacing.md }]}>
+      <View
+        style={[styles.customHeader, { paddingTop: insets.top + spacing.md }]}
+      >
         <View style={{ flex: 1 }}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Marine Parts</Text>
-          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Catalog</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            Loay Marine Parts
+          </Text>
+          <Text
+            style={[styles.headerSubtitle, { color: colors.textSecondary }]}
+          >
+            Catalog
+          </Text>
         </View>
         <Pressable
-          onPress={() => Alert.alert('Notifications', 'No new spares worksheet updates.')}
-          style={[styles.bellContainer, { backgroundColor: colors.surfaceSecondary }]}
+          onPress={() =>
+            Alert.alert('Notifications', 'No new spares worksheet updates.')
+          }
+          style={[
+            styles.bellContainer,
+            { backgroundColor: colors.surfaceSecondary },
+          ]}
         >
           <Text style={{ fontSize: 20 }}>🔔</Text>
           <View style={styles.notificationBadge} />
@@ -112,11 +125,26 @@ export const ProductListScreen: React.FC = () => {
       <View
         style={[
           styles.searchContainer,
-          { borderBottomColor: colors.border, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, paddingTop: spacing.xs },
+          {
+            borderBottomColor: colors.border,
+            paddingHorizontal: spacing.lg,
+            paddingBottom: spacing.md,
+            paddingTop: spacing.xs,
+          },
         ]}
       >
-        <View style={[styles.searchWrapper, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
-          <Text style={[styles.searchIcon, { color: colors.textSecondary }]}>🔍</Text>
+        <View
+          style={[
+            styles.searchWrapper,
+            {
+              backgroundColor: colors.surfaceSecondary,
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          <Text style={[styles.searchIcon, { color: colors.textSecondary }]}>
+            🔍
+          </Text>
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
             value={searchQuery}
@@ -126,7 +154,10 @@ export const ProductListScreen: React.FC = () => {
             autoCapitalize="none"
             autoCorrect={false}
           />
-          <Pressable onPress={() => navigateTo('search')} style={styles.filterButton}>
+          <Pressable
+            onPress={() => navigateTo('search')}
+            style={styles.filterButton}
+          >
             <Text style={{ fontSize: 18 }}>🎛️</Text>
           </Pressable>
         </View>

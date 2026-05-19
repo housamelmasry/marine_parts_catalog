@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, ScrollView, Alert, Pressable, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../hooks/useTheme';
 import { useUIStore } from '../../../app/store';
 import { productRepository } from '../repository/ProductRepository';
@@ -13,6 +14,7 @@ import { Input } from '../../../shared/ui/Input';
 
 export const ProductDetailScreen: React.FC = () => {
   const { colors, spacing } = useTheme();
+  const insets = useSafeAreaInsets();
   const {
     selectedProduct,
     setSelectedProduct,
@@ -141,90 +143,102 @@ export const ProductDetailScreen: React.FC = () => {
   const tagChips = selectedProduct.tags.split(/\s+/).filter(Boolean);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Header title={selectedProduct.title} showBack />
+    <View style={[styles.container, { backgroundColor: '#F4F6F9' }]}>
+      {/* Solid Navy Header matching mockup exactly */}
+      <View
+        style={[
+          styles.navyHeader,
+          {
+            backgroundColor: '#0B2043',
+            paddingTop: insets.top + spacing.sm,
+            paddingBottom: spacing.sm,
+            paddingHorizontal: spacing.md,
+          },
+        ]}
+      >
+        <Pressable onPress={goBack} style={styles.headerButton}>
+          <Text style={{ color: '#FFFFFF', fontSize: 28, fontWeight: 'bold' }}>‹</Text>
+        </Pressable>
+        <Text style={[styles.headerTitle, { color: '#FFFFFF' }]}></Text>
+        <Pressable
+          onPress={() => {
+            Alert.alert(
+              'Actions',
+              'Select product option',
+              [
+                { text: 'Edit', onPress: () => navigateTo('edit-product') },
+                { text: 'Delete', style: 'destructive', onPress: handleDelete },
+                { text: 'Cancel', style: 'cancel' },
+              ]
+            );
+          }}
+          style={styles.headerButton}
+        >
+          <Text style={{ color: '#FFFFFF', fontSize: 28, fontWeight: 'bold' }}>⋯</Text>
+        </Pressable>
+      </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
         {/* Large Product Image Header */}
-        <View style={[styles.imageBanner, { backgroundColor: colors.surfaceSecondary, borderBottomColor: colors.border }]}>
+        <View style={[styles.imageBanner, { backgroundColor: '#F4F6F9', borderBottomWidth: 0 }]}>
           <Text style={styles.largeSymbol}>{symbol}</Text>
         </View>
 
-        <View style={{ padding: spacing.lg }}>
-          {/* Main Info Card */}
-          <Card style={{ marginBottom: spacing.lg }}>
-            <Text variant="caption" color={colors.textSecondary}>SPARE PART PRODUCT</Text>
-            <Text variant="h1" weight="bold" style={{ marginVertical: 4 }}>
-              {selectedProduct.title}
-            </Text>
-            
-            <Text variant="h2" color={colors.primary} weight="bold" style={{ marginTop: spacing.xs }}>
-              {selectedProduct.price} EGP
-            </Text>
-          </Card>
-
-          {/* Tags list */}
-          <Text variant="caption" color={colors.textSecondary} weight="bold" style={{ marginBottom: spacing.xs }}>
-            PRODUCT TAGS
+        {/* Pure White Rounded Content Card */}
+        <View style={[styles.contentCard, { backgroundColor: '#FFFFFF' }]}>
+          {/* Title & Price */}
+          <Text variant="h1" weight="bold" color="#0B2043" style={{ marginBottom: 4 }}>
+            {selectedProduct.title}
           </Text>
-          <Card style={{ marginBottom: spacing.lg }}>
-            {tagChips.length === 0 ? (
-              <Text variant="bodyMedium" color={colors.textSecondary}>No tags defined.</Text>
-            ) : (
-              <View style={styles.tagGrid}>
-                {tagChips.map(tag => (
-                  <Pressable
-                    key={tag}
-                    onPress={() => {
-                      setSelectedTag(tag);
-                      goBack(); // Navigate back home to view filter results
-                    }}
-                    style={[styles.tagBadge, { backgroundColor: colors.surfaceSecondary }]}
-                  >
-                    <Text variant="bodySmall" weight="semibold" color={colors.primary}>
-                      {tag}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            )}
-          </Card>
-
-          {/* Technical notes */}
-          <Text variant="caption" color={colors.textSecondary} weight="bold" style={{ marginBottom: spacing.xs }}>
-            TECHNICAL SPECIFICATIONS / NOTES
+          <Text variant="h2" color="#0B2043" weight="bold" style={{ marginBottom: spacing.lg }}>
+            {selectedProduct.price} EGP
           </Text>
-          <Card style={{ marginBottom: spacing.lg }}>
-            <Text variant="bodyMedium" style={{ lineHeight: 22 }}>
-              {selectedProduct.notes || 'No technical notes recorded for this item.'}
-            </Text>
-          </Card>
 
-          {/* Quick Share action row */}
-          <Button
-            title="SHARE ON WHATSAPP"
-            onPress={handleShare}
-            variant="primary"
-            style={styles.shareButton}
-          />
-
-          {/* Edit / Delete footer buttons */}
-          <View style={styles.footerButtons}>
-            <Button
-              title="EDIT PRODUCT"
-              onPress={() => navigateTo('edit-product')}
-              variant="outline"
-              style={styles.halfBtn}
-            />
-            <Button
-              title="DELETE PRODUCT"
-              onPress={handleDelete}
-              variant="accent"
-              style={styles.halfBtn}
-            />
+          {/* Tags Chips */}
+          <View style={styles.tagWrapper}>
+            {tagChips.map(tag => (
+              <Pressable
+                key={tag}
+                onPress={() => {
+                  setSelectedTag(tag);
+                  goBack();
+                }}
+                style={[styles.tagBadge, { backgroundColor: '#EBF0F5' }]}
+              >
+                <Text variant="bodySmall" weight="semibold" color="#0B2043">
+                  {tag}
+                </Text>
+              </Pressable>
+            ))}
           </View>
+
+          {/* Technical Specs Notes */}
+          <Text variant="bodyLarge" weight="bold" color="#0B2043" style={{ marginTop: spacing.lg, marginBottom: spacing.xs }}>
+            Notes
+          </Text>
+          <Text variant="bodyMedium" color="#818A96" style={{ lineHeight: 22 }}>
+            {selectedProduct.notes || 'No technical notes recorded for this item.'}
+          </Text>
         </View>
       </ScrollView>
+
+      {/* Sticky Premium Bottom Action Bar */}
+      <View style={[styles.stickyBottomBar, { borderTopColor: colors.border, backgroundColor: '#FFFFFF', paddingBottom: Platform.OS === 'ios' ? insets.bottom + spacing.xs : spacing.md }]}>
+        <Pressable onPress={handleShare} style={styles.bottomBarItem}>
+          <Text style={{ fontSize: 24, marginBottom: 2 }}>💬</Text>
+          <Text variant="caption" color="#0B2043" weight="bold">Share</Text>
+        </Pressable>
+        <View style={[styles.verticalDivider, { backgroundColor: colors.border }]} />
+        <Pressable onPress={() => navigateTo('edit-product')} style={styles.bottomBarItem}>
+          <Text style={{ fontSize: 24, marginBottom: 2 }}>✏️</Text>
+          <Text variant="caption" color="#0B2043" weight="bold">Edit</Text>
+        </Pressable>
+        <View style={[styles.verticalDivider, { backgroundColor: colors.border }]} />
+        <Pressable onPress={handleDelete} style={styles.bottomBarItem}>
+          <Text style={{ fontSize: 24, marginBottom: 2 }}>🗑️</Text>
+          <Text variant="caption" color={colors.error} weight="bold">Delete</Text>
+        </Pressable>
+      </View>
     </View>
   );
 };
@@ -233,36 +247,73 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  navyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    height: 60,
+  },
+  headerButton: {
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
   imageBanner: {
     height: 220,
     alignItems: 'center',
     justifyContent: 'center',
-    borderBottomWidth: 1,
   },
   largeSymbol: {
     fontSize: 90,
   },
-  tagGrid: {
+  contentCard: {
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    padding: 24,
+    minHeight: 400,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  tagWrapper: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
   tagBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
-  shareButton: {
-    height: 52,
-    marginBottom: 16,
-  },
-  footerButtons: {
+  stickyBottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
-    gap: 12,
+    borderTopWidth: 1,
+    paddingTop: 12,
+    elevation: 10,
+    shadowOffset: { width: 0, height: -4 },
+    shadowRadius: 10,
+    shadowOpacity: 0.08,
   },
-  halfBtn: {
+  bottomBarItem: {
     flex: 1,
-    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verticalDivider: {
+    width: 1,
+    height: '60%',
+    alignSelf: 'center',
   },
 });
+
 export default ProductDetailScreen;

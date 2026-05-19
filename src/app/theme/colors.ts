@@ -1,16 +1,16 @@
 export const colors = {
   light: {
-    background: '#F5F7FA',
+    background: '#F4F6F9',
     surface: '#FFFFFF',
-    surfaceSecondary: '#F0F2F5',
-    primary: '#0B66C2', // Deep Ocean Blue
-    secondary: '#00A8CC', // Marine Aqua
-    accent: '#FF6B6B', // Lifejacket Coral
-    text: '#1C2D42', // Dark Navy
-    textSecondary: '#657786', // Slate Gray
-    border: '#E1E8ED',
+    surfaceSecondary: '#EBF0F5',
+    primary: '#0B2043', // Navy Blue brand color
+    secondary: '#2C569E', // Medium Active Blue
+    accent: '#EB8C30', // Orange Accent
+    text: '#0B2043', // Navy Blue
+    textSecondary: '#818A96', // Slate Gray
+    border: '#D9DBDF',
     success: '#2EC4B6',
-    warning: '#FF9F1C',
+    warning: '#EB8C30',
     error: '#E71D36',
     shadow: '#000000',
   },
