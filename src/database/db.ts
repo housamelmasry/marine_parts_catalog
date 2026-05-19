@@ -5,6 +5,7 @@ export interface Product {
   title: string;
   price: number;
   tags: string; // space or comma separated tags, e.g. "#yamaha #pump #40hp"
+  category?: string; // New field for product category
   notes: string;
   image_path: string;
   thumbnail_path: string;
@@ -50,6 +51,7 @@ class LocalDatabase {
         title: 'Yamaha Water Pump',
         price: 2500,
         tags: '#yamaha #pump #40hp',
+        category: 'Engine Parts',
         notes: 'Original Japanese water pump kit. Reliable cooling for Yamaha 40HP outboards.',
         image_path: 'part_pump',
         thumbnail_path: 'part_pump',
@@ -60,6 +62,7 @@ class LocalDatabase {
         title: 'Mercury Propeller 3-Blade',
         price: 3200,
         tags: '#mercury #propeller #outboard',
+        category: 'Propellers',
         notes: 'High-performance aluminum 3-blade propeller for Mercury motors.',
         image_path: 'part_prop',
         thumbnail_path: 'part_prop',
@@ -70,6 +73,7 @@ class LocalDatabase {
         title: 'Volvo Penta Primary Fuel Filter',
         price: 1800,
         tags: '#volvo #filter #fuel',
+        category: 'Filters',
         notes: 'Water separating fuel filter element. Crucial for clean diesel combustion.',
         image_path: 'part_filter',
         thumbnail_path: 'part_filter',
@@ -80,6 +84,7 @@ class LocalDatabase {
         title: 'Rotax Spark Plug LFR6A',
         price: 450,
         tags: '#rotax #spark #sparkplug',
+        category: 'Electrical',
         notes: 'Fits Rotax 1630 ACE and Sea-Doo Spark personal watercraft engines.',
         image_path: 'part_spark',
         thumbnail_path: 'part_spark',

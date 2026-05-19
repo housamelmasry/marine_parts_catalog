@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   TextInput,
   Alert,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../hooks/useTheme';
@@ -40,6 +41,7 @@ export const ProductListScreen: React.FC = () => {
 
   const renderProductItem = ({ item }: { item: Product }) => {
     const symbol = imageService.getPlaceholderSymbol(item.image_path);
+    const isRealPhoto = item.image_path && item.image_path.startsWith('file://');
 
     return (
       <View style={styles.gridCell}>
@@ -54,17 +56,35 @@ export const ProductListScreen: React.FC = () => {
               {
                 backgroundColor: colors.surfaceSecondary,
                 borderRadius: spacing.sm,
+                overflow: 'hidden',
               },
             ]}
           >
-            <Text style={styles.imageSymbol}>{symbol}</Text>
+            {isRealPhoto ? (
+              <Image
+                source={{ uri: item.image_path }}
+                style={{ width: '100%', height: '100%', borderRadius: spacing.sm }}
+                resizeMode="cover"
+              />
+            ) : (
+              <Text style={styles.imageSymbol}>{symbol}</Text>
+            )}
           </View>
+
+          {/* Category badge */}
+          {item.category ? (
+            <View style={[styles.categoryBadge, { backgroundColor: colors.surfaceSecondary }]}>
+              <Text variant="caption" weight="bold" color={colors.secondary} numberOfLines={1}>
+                {item.category}
+              </Text>
+            </View>
+          ) : null}
 
           <Text
             variant="bodyLarge"
             weight="bold"
             numberOfLines={1}
-            style={{ marginTop: spacing.sm }}
+            style={{ marginTop: spacing.xs }}
           >
             {item.title}
           </Text>
@@ -76,15 +96,6 @@ export const ProductListScreen: React.FC = () => {
             style={{ marginTop: 2 }}
           >
             {item.price} EGP
-          </Text>
-
-          <Text
-            variant="caption"
-            color={colors.textSecondary}
-            numberOfLines={1}
-            style={{ marginTop: 4 }}
-          >
-            {item.tags}
           </Text>
         </Card>
       </View>
@@ -449,6 +460,13 @@ const styles = StyleSheet.create({
   },
   imageSymbol: {
     fontSize: 48,
+  },
+  categoryBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginTop: 8,
   },
   fab: {
     position: 'absolute',

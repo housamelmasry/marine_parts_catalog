@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, ScrollView, Alert, Pressable, Platform } from 'react-native';
+import { StyleSheet, View, ScrollView, Alert, Pressable, Platform, Image } from 'react-native';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../hooks/useTheme';
 import { useUIStore } from '../../../app/store';
@@ -26,12 +27,25 @@ export const ProductDetailScreen: React.FC = () => {
 
   // Editing form state
   const [editTitle, setEditTitle] = useState(selectedProduct?.title || '');
+  const [editCategory, setEditCategory] = useState(selectedProduct?.category || '');
   const [editPrice, setEditPrice] = useState(selectedProduct?.price?.toString() || '');
   const [editTags, setEditTags] = useState(selectedProduct?.tags || '');
   const [editNotes, setEditNotes] = useState(selectedProduct?.notes || '');
+  const [newPhotoUri, setNewPhotoUri] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
 
   if (!selectedProduct) return null;
+
+  const handleSelectPhoto = async () => {
+    const result = await launchImageLibrary({
+      mediaType: 'photo',
+      quality: 0.8,
+    });
+    
+    if (result.assets && result.assets.length > 0) {
+      setNewPhotoUri(result.assets[0].uri || null);
+    }
+  };
 
   const handleShare = () => {
     ShareService.shareProduct(selectedProduct);
@@ -69,11 +83,23 @@ export const ProductDetailScreen: React.FC = () => {
 
     try {
       setUpdating(true);
+      
+      let updatedImagePath = selectedProduct.image_path;
+      let updatedThumbnailPath = selectedProduct.thumbnail_path;
+
+      if (newPhotoUri) {
+        updatedImagePath = await imageService.copyToAppStorage(newPhotoUri);
+        updatedThumbnailPath = await imageService.generateThumbnail(newPhotoUri);
+      }
+
       const updated = await productRepository.update(selectedProduct.id, {
         title: editTitle.trim(),
         price: parseFloat(editPrice) || 0,
         tags: editTags.trim(),
+        category: editCategory.trim(),
         notes: editNotes.trim(),
+        image_path: updatedImagePath,
+        thumbnail_path: updatedThumbnailPath,
       });
 
       setUpdating(false);
@@ -103,12 +129,31 @@ export const ProductDetailScreen: React.FC = () => {
           />
 
           <Input
+            label="Category"
+            value={editCategory}
+            onChangeText={setEditCategory}
+            placeholder="e.g. Engine Parts"
+          />
+
+          <Input
             label="Price (EGP)"
             value={editPrice}
             onChangeText={setEditPrice}
             placeholder="e.g. 1800"
             keyboardType="numeric"
           />
+
+          <Text variant="caption" color={colors.textSecondary} weight="bold" style={{ marginTop: spacing.md, marginBottom: spacing.xs }}>
+            PRODUCT PHOTO
+          </Text>
+          <Card style={{ marginBottom: spacing.lg, alignItems: 'center' }}>
+            {newPhotoUri || (selectedProduct.image_path && selectedProduct.image_path.startsWith('file://')) ? (
+              <Image source={{ uri: newPhotoUri || selectedProduct.image_path }} style={{ width: '100%', height: 200, borderRadius: 8, marginBottom: 12 }} resizeMode="cover" />
+            ) : (
+               <Text color={colors.textSecondary} style={{ marginBottom: 12, fontSize: 40 }}>{imageService.getPlaceholderSymbol(selectedProduct.image_path)}</Text>
+            )}
+            <Button title="CHANGE PHOTO" onPress={handleSelectPhoto} variant="outline" />
+          </Card>
 
           <Input
             label="Tags (e.g. #yamaha #filter)"
@@ -181,12 +226,19 @@ export const ProductDetailScreen: React.FC = () => {
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
         {/* Large Product Image Header */}
         <View style={[styles.imageBanner, { backgroundColor: '#F4F6F9', borderBottomWidth: 0 }]}>
-          <Text style={styles.largeSymbol}>{symbol}</Text>
+          {selectedProduct.image_path && selectedProduct.image_path.startsWith('file://') ? (
+             <Image source={{ uri: selectedProduct.image_path }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          ) : (
+             <Text style={styles.largeSymbol}>{symbol}</Text>
+          )}
         </View>
 
         {/* Pure White Rounded Content Card */}
         <View style={[styles.contentCard, { backgroundColor: '#FFFFFF' }]}>
           {/* Title & Price */}
+          <Text variant="caption" color={colors.textSecondary} weight="bold" style={{ marginBottom: 4 }}>
+            {selectedProduct.category?.toUpperCase() || 'SPARE PART PRODUCT'}
+          </Text>
           <Text variant="h1" weight="bold" color="#0B2043" style={{ marginBottom: 4 }}>
             {selectedProduct.title}
           </Text>

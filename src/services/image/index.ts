@@ -1,3 +1,11 @@
+let RNFS: any = null;
+try {
+  const fs = require('react-native-fs');
+  RNFS = fs.default || fs;
+} catch (e) {
+  console.warn('react-native-fs failed to load, falling back to memory/uri only mode', e);
+}
+
 export class ImageService {
   // Offline product images seed placeholders
   private placeholderImages: { [key: string]: string } = {
@@ -13,30 +21,44 @@ export class ImageService {
   }
 
   async copyToAppStorage(uri: string): Promise<string> {
-    // In a real device setup, this uses react-native-fs to copy files:
-    // const filename = `${Date.now()}_original.jpg`;
-    // const destPath = `${FS.DocumentDirectoryPath}/products/original/${filename}`;
-    // await FS.copyFile(uri, destPath);
-    // return destPath;
+    if (this.placeholderImages[uri]) return uri; // keep seed values
     
-    // Offline simulation: returns the chosen path or a mocked unique file reference
-    return uri || `custom_part_${Date.now()}`;
+    if (!uri) return '';
+    if (!RNFS || !RNFS.DocumentDirectoryPath) {
+      console.warn('react-native-fs is not available. Using raw URI.');
+      return uri;
+    }
+    try {
+      const fileName = `img_${Date.now()}.jpg`;
+      const destPath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
+      await RNFS.copyFile(uri, destPath);
+      return `file://${destPath}`;
+    } catch (e) {
+      console.error('Failed to copy image to app storage', e);
+      return uri; // fallback
+    }
   }
 
   async generateThumbnail(uri: string): Promise<string> {
-    // In a real device, this creates a scaled down version of the original image:
-    // return `${uri}_thumb.jpg`;
-    
-    return uri || `custom_part_${Date.now()}_thumb`;
+    return uri; // For simplicity, we just use original image URI
   }
 
   async deleteImage(path: string): Promise<boolean> {
-    // In a real device, this deletes original and thumbnail files:
-    // if (await FS.exists(path)) {
-    //   await FS.unlink(path);
-    // }
-    console.log(`Image deleted from disk: ${path}`);
-    return true;
+    if (this.placeholderImages[path]) return true; // Don't delete seeds
+    if (!RNFS) return true;
+    try {
+      if (path && path.startsWith('file://')) {
+        const purePath = path.replace('file://', '');
+        const exists = await RNFS.exists(purePath);
+        if (exists) {
+          await RNFS.unlink(purePath);
+        }
+      }
+      return true;
+    } catch (e) {
+      console.error('Failed to delete image', e);
+      return false;
+    }
   }
 }
 
