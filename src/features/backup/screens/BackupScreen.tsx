@@ -62,7 +62,7 @@ export const BackupScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Header title="Backups & Orders" showBack={false} />
+      <Header title="Backups & Orders" showBack />
 
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 80 }} showsVerticalScrollIndicator={false}>
         

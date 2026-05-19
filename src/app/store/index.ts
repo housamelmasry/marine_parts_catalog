@@ -8,7 +8,9 @@ export type Screen =
   | 'add-product' 
   | 'product-details' 
   | 'edit-product' 
-  | 'settings';
+  | 'settings'
+  | 'search'
+  | 'backup';
 
 interface UIState {
   // Theme state

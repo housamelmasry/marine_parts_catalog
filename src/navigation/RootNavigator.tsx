@@ -10,6 +10,8 @@ import { ProductListScreen } from '../features/products/screens/ProductListScree
 import { ProductDetailScreen } from '../features/products/screens/ProductDetailScreen';
 import { AddProductScreen } from '../features/products/screens/AddProductScreen';
 import { SettingsScreen } from '../features/settings/screens/SettingsScreen';
+import { SearchScreen } from '../features/search/screens/SearchScreen';
+import { BackupScreen } from '../features/backup/screens/BackupScreen';
 
 export const RootNavigator: React.FC = () => {
   const { colors, spacing } = useTheme();
@@ -27,21 +29,28 @@ export const RootNavigator: React.FC = () => {
         return <ProductDetailScreen />;
       case 'settings':
         return <SettingsScreen />;
+      case 'search':
+        return <SearchScreen />;
+      case 'backup':
+        return <BackupScreen />;
       default:
         return <ProductListScreen />;
     }
   };
 
-  const getActiveTab = (): 'catalog' | 'settings' => {
-    if (currentScreen === 'settings') return 'settings';
-    return 'catalog';
+  const getActiveTab = (): 'home' | 'add' | 'settings' => {
+    if (currentScreen === 'settings' || currentScreen === 'backup') return 'settings';
+    if (currentScreen === 'add-product') return 'add';
+    return 'home';
   };
 
   const activeTab = getActiveTab();
 
-  const handleTabPress = (tab: 'catalog' | 'settings') => {
-    if (tab === 'catalog') {
+  const handleTabPress = (tab: 'home' | 'add' | 'settings') => {
+    if (tab === 'home') {
       navigateTo('home');
+    } else if (tab === 'add') {
+      navigateTo('add-product');
     } else if (tab === 'settings') {
       navigateTo('settings');
     }
@@ -54,7 +63,7 @@ export const RootNavigator: React.FC = () => {
         {renderActiveScreen()}
       </View>
 
-      {/* Floating Bottom Tab Bar */}
+      {/* Floating Bottom Tab Bar matching mockup exactly */}
       <View
         style={[
           styles.tabBar,
@@ -66,18 +75,33 @@ export const RootNavigator: React.FC = () => {
           },
         ]}
       >
-        {/* Catalog (Home) Tab */}
+        {/* Home Tab */}
         <Pressable
-          onPress={() => handleTabPress('catalog')}
+          onPress={() => handleTabPress('home')}
           style={styles.tabItem}
         >
-          <Text align="center" style={styles.tabIcon}>⚓</Text>
+          <Text align="center" style={styles.tabIcon}>🏠</Text>
           <Text
             variant="caption"
             weight="bold"
-            color={activeTab === 'catalog' ? colors.primary : colors.textSecondary}
+            color={activeTab === 'home' ? colors.primary : colors.textSecondary}
           >
-            Catalog
+            Home
+          </Text>
+        </Pressable>
+
+        {/* Add Tab */}
+        <Pressable
+          onPress={() => handleTabPress('add')}
+          style={styles.tabItem}
+        >
+          <Text align="center" style={styles.tabIcon}>➕</Text>
+          <Text
+            variant="caption"
+            weight="bold"
+            color={activeTab === 'add' ? colors.primary : colors.textSecondary}
+          >
+            Add
           </Text>
         </Pressable>
 

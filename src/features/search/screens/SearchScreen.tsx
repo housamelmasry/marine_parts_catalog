@@ -42,7 +42,7 @@ export const SearchScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Header title="Spare Parts Search" showBack={false} />
+      <Header title="Spare Parts Search" showBack />
 
       {/* Search Input Area */}
       <View style={[styles.searchBox, { borderBottomColor: colors.border, padding: spacing.lg }]}>

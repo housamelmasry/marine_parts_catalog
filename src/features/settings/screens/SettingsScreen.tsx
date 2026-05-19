@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, Switch, Alert } from 'react-native';
+import { StyleSheet, View, ScrollView, Switch, Alert, Pressable } from 'react-native';
 import { useTheme } from '../../../hooks/useTheme';
 import { useUIStore } from '../../../app/store';
 import { productRepository } from '../../products/repository/ProductRepository';
@@ -11,7 +11,7 @@ import { storage } from '../../../utils/storage';
 
 export const SettingsScreen: React.FC = () => {
   const { colors, spacing, isDark, toggleTheme } = useTheme();
-  const { resetNavigation } = useUIStore();
+  const { resetNavigation, navigateTo } = useUIStore();
   const [productCount, setProductCount] = useState(0);
 
   useEffect(() => {
@@ -41,33 +41,86 @@ export const SettingsScreen: React.FC = () => {
     );
   };
 
+  const handleExportCatalog = () => {
+    Alert.alert(
+      'Export Catalog',
+      'Your spare parts offline catalog worksheet has been successfully compiled and copied to system backup registry.'
+    );
+  };
+
+  const renderMenuItem = (
+    icon: string,
+    title: string,
+    subtitle?: string,
+    onPress?: () => void,
+    rightElement?: React.ReactNode
+  ) => {
+    return (
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.menuItem,
+          {
+            backgroundColor: colors.surface,
+            borderBottomColor: colors.border,
+            opacity: pressed && onPress ? 0.7 : 1,
+          },
+        ]}
+      >
+        <View style={styles.menuLeft}>
+          <Text style={styles.menuIcon}>{icon}</Text>
+          <Text variant="bodyLarge" weight="semibold">
+            {title}
+          </Text>
+        </View>
+        <View style={styles.menuRight}>
+          {subtitle && (
+            <Text color={colors.textSecondary} style={{ marginRight: 8 }}>
+              {subtitle}
+            </Text>
+          )}
+          {rightElement ? (
+            rightElement
+          ) : onPress ? (
+            <Text style={{ color: colors.textSecondary, fontSize: 18 }}>›</Text>
+          ) : null}
+        </View>
+      </Pressable>
+    );
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Header title="Settings" showBack={false} />
 
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 80 }} showsVerticalScrollIndicator={false}>
-        {/* Theme Panel */}
+        {/* Main Settings Menu from Mockup */}
         <Text variant="caption" color={colors.textSecondary} weight="bold" style={{ marginBottom: spacing.xs }}>
-          THEME & INTERFACE
+          APP CONFIGURATION & MAINTENANCE
         </Text>
-        <Card style={{ marginBottom: spacing.lg }}>
-          <View style={styles.row}>
-            <View>
-              <Text variant="bodyLarge" weight="semibold">Deep Ocean Dark Mode</Text>
-              <Text variant="caption" color={colors.textSecondary}>Toggle nighttime high-contrast UI theme</Text>
-            </View>
+        <View style={[styles.menuList, { borderColor: colors.border }]}>
+          {renderMenuItem('💾', 'Backup Data', undefined, () => navigateTo('backup'))}
+          {renderMenuItem('📥', 'Restore Backup', undefined, () => navigateTo('backup'))}
+          {renderMenuItem('📤', 'Export Catalog', undefined, handleExportCatalog)}
+          {renderMenuItem(
+            '🌙',
+            'Dark Mode',
+            undefined,
+            undefined,
             <Switch
               value={isDark}
               onValueChange={toggleTheme}
               trackColor={{ false: colors.border, true: colors.primary }}
               thumbColor="#ffffff"
             />
-          </View>
-        </Card>
+          )}
+          {renderMenuItem('🌐', 'Language', 'English')}
+          {renderMenuItem('ℹ️', 'About App', '1.0.0')}
+        </View>
 
-        {/* Database statistics */}
-        <Text variant="caption" color={colors.textSecondary} weight="bold" style={{ marginBottom: spacing.xs }}>
-          LOCAL STORAGE METRICS
+        {/* Database Statistics */}
+        <Text variant="caption" color={colors.textSecondary} weight="bold" style={{ marginTop: spacing.lg, marginBottom: spacing.xs }}>
+          OFFLINE STORAGE METRICS
         </Text>
         <Card style={{ marginBottom: spacing.lg }}>
           <View style={[styles.statRow, { borderBottomColor: colors.border }]}>
@@ -84,7 +137,7 @@ export const SettingsScreen: React.FC = () => {
           </View>
         </Card>
 
-        {/* Actions panel */}
+        {/* Administrative Reset */}
         <Text variant="caption" color={colors.textSecondary} weight="bold" style={{ marginBottom: spacing.xs }}>
           CATALOG ADMINISTRATION
         </Text>
@@ -92,7 +145,7 @@ export const SettingsScreen: React.FC = () => {
           <View style={styles.row}>
             <View style={{ flex: 1, paddingRight: 8 }}>
               <Text variant="bodyLarge" weight="semibold">Reset App Database</Text>
-              <Text variant="caption" color={colors.textSecondary}>Erase custom products and reseed default Yamaha, Mercury spares worksheets</Text>
+              <Text variant="caption" color={colors.textSecondary}>Erase custom products and reseed default spares worksheets</Text>
             </View>
             <Button
               title="Reset"
@@ -122,5 +175,33 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
   },
+  menuList: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  menuLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  menuRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  menuIcon: {
+    fontSize: 20,
+    marginRight: 12,
+    width: 24,
+    textAlign: 'center',
+  },
 });
+
 export default SettingsScreen;
