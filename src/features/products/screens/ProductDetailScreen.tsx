@@ -12,6 +12,7 @@ import { Card } from '../../../shared/components/Card';
 import { Header } from '../../../shared/components/Header';
 import { Button } from '../../../shared/components/Button';
 import { Input } from '../../../shared/ui/Input';
+import { useTranslation } from '../../../utils/i18n';
 
 export const ProductDetailScreen: React.FC = () => {
   const { colors, spacing } = useTheme();
@@ -24,6 +25,7 @@ export const ProductDetailScreen: React.FC = () => {
     goBack,
     setSelectedTag,
   } = useUIStore();
+  const { t, isRTL } = useTranslation();
 
   // Editing form state
   const [editTitle, setEditTitle] = useState(selectedProduct?.title || '');
@@ -37,13 +39,23 @@ export const ProductDetailScreen: React.FC = () => {
   if (!selectedProduct) return null;
 
   const handleSelectPhoto = async () => {
-    const result = await launchImageLibrary({
-      mediaType: 'photo',
-      quality: 0.8,
-    });
-    
-    if (result.assets && result.assets.length > 0) {
-      setNewPhotoUri(result.assets[0].uri || null);
+    try {
+      const result = await launchImageLibrary({
+        mediaType: 'photo',
+        quality: 0.8,
+      });
+      
+      if (result.assets && result.assets.length > 0) {
+        setNewPhotoUri(result.assets[0].uri || null);
+      }
+    } catch (e) {
+      console.warn('launchImageLibrary native module is null / failed to load', e);
+      Alert.alert(
+        isRTL ? 'معرض الصور غير متوفر' : 'Gallery Unavailable',
+        isRTL
+          ? 'معرض الصور غير متوفر في هذه النسخة التجريبية. يرجى إعادة بناء التطبيق.'
+          : 'Image gallery is not supported in this preview build. Please rebuild the native binary.'
+      );
     }
   };
 
@@ -118,33 +130,41 @@ export const ProductDetailScreen: React.FC = () => {
   if (currentScreen === 'edit-product') {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <Header title="Edit Product" showBack />
+        <Header title={t('edit')} showBack />
         
         <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 80 }} keyboardShouldPersistTaps="handled">
           <Input
-            label="Product Title *"
+            label={t('productTitleLabel')}
             value={editTitle}
             onChangeText={setEditTitle}
-            placeholder="e.g. Yamaha Fuel Filter"
+            placeholder={isRTL ? 'مثال: فلتر وقود ميركوري' : 'e.g. Mercury Fuel Filter'}
+            style={isRTL ? { textAlign: 'right' } : undefined}
           />
 
           <Input
-            label="Category"
+            label={t('categoryLabel')}
             value={editCategory}
             onChangeText={setEditCategory}
-            placeholder="e.g. Engine Parts"
+            placeholder={isRTL ? 'مثال: الفلاتر' : 'e.g. Filters'}
+            style={isRTL ? { textAlign: 'right' } : undefined}
           />
 
           <Input
-            label="Price (EGP)"
+            label={t('priceLabel')}
             value={editPrice}
             onChangeText={setEditPrice}
             placeholder="e.g. 1800"
             keyboardType="numeric"
+            style={isRTL ? { textAlign: 'right' } : undefined}
           />
 
-          <Text variant="caption" color={colors.textSecondary} weight="bold" style={{ marginTop: spacing.md, marginBottom: spacing.xs }}>
-            PRODUCT PHOTO
+          <Text
+            variant="caption"
+            color={colors.textSecondary}
+            weight="bold"
+            style={{ marginTop: spacing.md, marginBottom: spacing.xs, textAlign: isRTL ? 'right' : 'left' }}
+          >
+            {t('productPhotoLabel')}
           </Text>
           <Card style={{ marginBottom: spacing.lg, alignItems: 'center' }}>
             {newPhotoUri || (selectedProduct.image_path && selectedProduct.image_path.startsWith('file://')) ? (
@@ -152,28 +172,29 @@ export const ProductDetailScreen: React.FC = () => {
             ) : (
                <Text color={colors.textSecondary} style={{ marginBottom: 12, fontSize: 40 }}>{imageService.getPlaceholderSymbol(selectedProduct.image_path)}</Text>
             )}
-            <Button title="CHANGE PHOTO" onPress={handleSelectPhoto} variant="outline" />
+            <Button title={t('changePhoto')} onPress={handleSelectPhoto} variant="outline" />
           </Card>
 
           <Input
-            label="Tags (e.g. #yamaha #filter)"
+            label={t('tagsLabel')}
             value={editTags}
             onChangeText={setEditTags}
-            placeholder="e.g. #yamaha #outboard #fuel"
+            placeholder="e.g. #yamaha #filter"
+            style={isRTL ? { textAlign: 'right' } : undefined}
           />
 
           <Input
-            label="Notes"
+            label={t('notesLabel')}
             value={editNotes}
             onChangeText={setEditNotes}
-            placeholder="e.g. OEM Replacement, Made in Japan"
+            placeholder={isRTL ? 'مثال: قطعة أصلية يابانية...' : 'e.g. OEM Replacement, Made in Japan'}
             multiline
             numberOfLines={3}
-            style={{ height: 80, textAlignVertical: 'top' }}
+            style={[{ height: 80, textAlignVertical: 'top' }, isRTL ? { textAlign: 'right' } : undefined]}
           />
 
           <Button
-            title="SAVE CHANGES"
+            title={isRTL ? 'حفظ التعديلات' : 'SAVE CHANGES'}
             onPress={handleSaveEdit}
             loading={updating}
             style={{ marginTop: spacing.md }}
@@ -198,22 +219,23 @@ export const ProductDetailScreen: React.FC = () => {
             paddingTop: insets.top + spacing.sm,
             paddingBottom: spacing.sm,
             paddingHorizontal: spacing.md,
+            flexDirection: isRTL ? 'row-reverse' : 'row',
           },
         ]}
       >
         <Pressable onPress={goBack} style={styles.headerButton}>
-          <Text style={{ color: '#FFFFFF', fontSize: 28, fontWeight: 'bold' }}>‹</Text>
+          <Text style={{ color: '#FFFFFF', fontSize: 28, fontWeight: 'bold', transform: [{ scaleX: isRTL ? -1 : 1 }] }}>‹</Text>
         </Pressable>
         <Text style={[styles.headerTitle, { color: '#FFFFFF' }]}></Text>
         <Pressable
           onPress={() => {
             Alert.alert(
-              'Actions',
-              'Select product option',
+              isRTL ? 'خيارات المنتج' : 'Actions',
+              isRTL ? 'اختر إجراءً للمنتج' : 'Select product option',
               [
-                { text: 'Edit', onPress: () => navigateTo('edit-product') },
-                { text: 'Delete', style: 'destructive', onPress: handleDelete },
-                { text: 'Cancel', style: 'cancel' },
+                { text: isRTL ? 'تعديل' : 'Edit', onPress: () => navigateTo('edit-product') },
+                { text: isRTL ? 'حذف' : 'Delete', style: 'destructive', onPress: handleDelete },
+                { text: t('cancel'), style: 'cancel' },
               ]
             );
           }}
@@ -234,20 +256,35 @@ export const ProductDetailScreen: React.FC = () => {
         </View>
 
         {/* Pure White Rounded Content Card */}
-        <View style={[styles.contentCard, { backgroundColor: '#FFFFFF' }]}>
+        <View style={[styles.contentCard, { backgroundColor: '#FFFFFF', alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
           {/* Title & Price */}
-          <Text variant="caption" color={colors.textSecondary} weight="bold" style={{ marginBottom: 4 }}>
-            {selectedProduct.category?.toUpperCase() || 'SPARE PART PRODUCT'}
+          <Text
+            variant="caption"
+            color={colors.textSecondary}
+            weight="bold"
+            style={{ marginBottom: 4, textAlign: isRTL ? 'right' : 'left' }}
+          >
+            {selectedProduct.category?.toUpperCase() || (isRTL ? 'منتج قطع غيار' : 'SPARE PART PRODUCT')}
           </Text>
-          <Text variant="h1" weight="bold" color="#0B2043" style={{ marginBottom: 4 }}>
+          <Text
+            variant="h1"
+            weight="bold"
+            color="#0B2043"
+            style={{ marginBottom: 4, textAlign: isRTL ? 'right' : 'left' }}
+          >
             {selectedProduct.title}
           </Text>
-          <Text variant="h2" color="#0B2043" weight="bold" style={{ marginBottom: spacing.lg }}>
+          <Text
+            variant="h2"
+            color="#0B2043"
+            weight="bold"
+            style={{ marginBottom: spacing.lg, textAlign: isRTL ? 'right' : 'left' }}
+          >
             {selectedProduct.price} EGP
           </Text>
 
           {/* Tags Chips */}
-          <View style={styles.tagWrapper}>
+          <View style={[styles.tagWrapper, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
             {tagChips.map(tag => (
               <Pressable
                 key={tag}
@@ -265,30 +302,49 @@ export const ProductDetailScreen: React.FC = () => {
           </View>
 
           {/* Technical Specs Notes */}
-          <Text variant="bodyLarge" weight="bold" color="#0B2043" style={{ marginTop: spacing.lg, marginBottom: spacing.xs }}>
-            Notes
+          <Text
+            variant="bodyLarge"
+            weight="bold"
+            color="#0B2043"
+            style={{ marginTop: spacing.lg, marginBottom: spacing.xs, textAlign: isRTL ? 'right' : 'left' }}
+          >
+            {isRTL ? 'الملاحظات الفنية' : 'Notes'}
           </Text>
-          <Text variant="bodyMedium" color="#818A96" style={{ lineHeight: 22 }}>
-            {selectedProduct.notes || 'No technical notes recorded for this item.'}
+          <Text
+            variant="bodyMedium"
+            color="#818A96"
+            style={{ lineHeight: 22, textAlign: isRTL ? 'right' : 'left' }}
+          >
+            {selectedProduct.notes || (isRTL ? 'لا توجد ملاحظات فنية مسجلة لهذا العنصر.' : 'No technical notes recorded for this item.')}
           </Text>
         </View>
       </ScrollView>
 
       {/* Sticky Premium Bottom Action Bar */}
-      <View style={[styles.stickyBottomBar, { borderTopColor: colors.border, backgroundColor: '#FFFFFF', paddingBottom: Platform.OS === 'ios' ? insets.bottom + spacing.xs : spacing.md }]}>
+      <View
+        style={[
+          styles.stickyBottomBar,
+          {
+            borderTopColor: colors.border,
+            backgroundColor: '#FFFFFF',
+            flexDirection: isRTL ? 'row-reverse' : 'row',
+            paddingBottom: Platform.OS === 'ios' ? insets.bottom + spacing.xs : spacing.md,
+          },
+        ]}
+      >
         <Pressable onPress={handleShare} style={styles.bottomBarItem}>
           <Text style={{ fontSize: 24, marginBottom: 2 }}>💬</Text>
-          <Text variant="caption" color="#0B2043" weight="bold">Share</Text>
+          <Text variant="caption" color="#0B2043" weight="bold">{t('share')}</Text>
         </Pressable>
         <View style={[styles.verticalDivider, { backgroundColor: colors.border }]} />
         <Pressable onPress={() => navigateTo('edit-product')} style={styles.bottomBarItem}>
           <Text style={{ fontSize: 24, marginBottom: 2 }}>✏️</Text>
-          <Text variant="caption" color="#0B2043" weight="bold">Edit</Text>
+          <Text variant="caption" color="#0B2043" weight="bold">{t('edit')}</Text>
         </Pressable>
         <View style={[styles.verticalDivider, { backgroundColor: colors.border }]} />
         <Pressable onPress={handleDelete} style={styles.bottomBarItem}>
           <Text style={{ fontSize: 24, marginBottom: 2 }}>🗑️</Text>
-          <Text variant="caption" color={colors.error} weight="bold">Delete</Text>
+          <Text variant="caption" color={colors.error} weight="bold">{t('delete')}</Text>
         </Pressable>
       </View>
     </View>
