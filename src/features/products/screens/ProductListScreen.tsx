@@ -208,7 +208,6 @@ export const ProductListScreen: React.FC = () => {
           }}
         />
       </View>
-
       {/* Recent / Quick Spares section */}
       {!searchQuery && (
         <View style={{ marginBottom: spacing.md }}>
@@ -292,6 +291,7 @@ export const ProductListScreen: React.FC = () => {
           />
         </View>
       )}
+
 
       {/* Two-Column Grid list */}
       {loading ? (

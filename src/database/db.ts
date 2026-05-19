@@ -1,11 +1,22 @@
 import { storage } from '../utils/storage';
 
+// ─────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────
+
+export interface Category {
+  id: number;
+  name: string;       // English name shown in UI
+  name_ar: string;    // Arabic name shown in RTL mode
+  created_at: string;
+}
+
 export interface Product {
   id: number;
   title: string;
   price: number;
   tags: string; // space or comma separated tags, e.g. "#yamaha #pump #40hp"
-  category?: string; // New field for product category
+  category?: string; // stores the category name string
   notes: string;
   image_path: string;
   thumbnail_path: string;
@@ -13,15 +24,39 @@ export interface Product {
   updated_at: string;
 }
 
+// ─────────────────────────────────────────────
+// LocalDatabase
+// ─────────────────────────────────────────────
+
 class LocalDatabase {
   private isInitialized = false;
+
+  // Products table
   private products: Map<number, Product> = new Map();
   private autoIncrementId = 1;
+
+  // Categories table
+  private categories: Map<number, Category> = new Map();
+  private categoryAutoIncrementId = 1;
+
+  // ── Initialization ──────────────────────────
 
   async initialize(): Promise<boolean> {
     if (this.isInitialized) return true;
 
-    // Load from memory storage
+    this._loadProducts();
+    this._loadCategories();
+
+    this.isInitialized = true;
+    console.log(
+      `DB initialized: ${this.products.size} products, ${this.categories.size} categories.`
+    );
+    return true;
+  }
+
+  // ── Products ────────────────────────────────
+
+  private _loadProducts() {
     const savedProducts = storage.getItem('sqlite_products_db');
     if (savedProducts) {
       try {
@@ -34,18 +69,14 @@ class LocalDatabase {
         this.autoIncrementId = maxId + 1;
       } catch (e) {
         console.error('Failed to parse sqlite_products_db', e);
-        this.seedInitialData();
+        this._seedProducts();
       }
     } else {
-      this.seedInitialData();
+      this._seedProducts();
     }
-
-    this.isInitialized = true;
-    console.log(`Seeded SQLite DB containing ${this.products.size} marine parts.`);
-    return true;
   }
 
-  private seedInitialData() {
+  private _seedProducts() {
     const initialList: Omit<Product, 'id'>[] = [
       {
         title: 'Yamaha Water Pump',
@@ -97,10 +128,10 @@ class LocalDatabase {
       const id = this.autoIncrementId++;
       this.products.set(id, { id, ...p });
     });
-    this.saveToStorage();
+    this._saveProducts();
   }
 
-  private saveToStorage() {
+  private _saveProducts() {
     const list = Array.from(this.products.values());
     storage.setItem('sqlite_products_db', JSON.stringify(list));
   }
@@ -119,38 +150,29 @@ class LocalDatabase {
     await this.initialize();
     const id = this.autoIncrementId++;
     const now = new Date().toISOString();
-    const newProduct: Product = {
-      id,
-      ...product,
-      created_at: now,
-      updated_at: now,
-    };
+    const newProduct: Product = { id, ...product, created_at: now, updated_at: now };
     this.products.set(id, newProduct);
-    this.saveToStorage();
+    this._saveProducts();
     return newProduct;
   }
 
-  async update(id: number, data: Partial<Omit<Product, 'id' | 'created_at' | 'updated_at'>>): Promise<Product | null> {
+  async update(
+    id: number,
+    data: Partial<Omit<Product, 'id' | 'created_at' | 'updated_at'>>
+  ): Promise<Product | null> {
     await this.initialize();
     const existing = this.products.get(id);
     if (!existing) return null;
-
-    const updated: Product = {
-      ...existing,
-      ...data,
-      updated_at: new Date().toISOString(),
-    };
+    const updated: Product = { ...existing, ...data, updated_at: new Date().toISOString() };
     this.products.set(id, updated);
-    this.saveToStorage();
+    this._saveProducts();
     return updated;
   }
 
   async delete(id: number): Promise<boolean> {
     await this.initialize();
     const deleted = this.products.delete(id);
-    if (deleted) {
-      this.saveToStorage();
-    }
+    if (deleted) this._saveProducts();
     return deleted;
   }
 
@@ -158,14 +180,95 @@ class LocalDatabase {
     await this.initialize();
     const term = query.toLowerCase().trim();
     if (!term) return this.getAll();
+    return Array.from(this.products.values())
+      .filter(
+        p =>
+          p.title.toLowerCase().includes(term) ||
+          p.tags.toLowerCase().includes(term) ||
+          p.notes.toLowerCase().includes(term)
+      )
+      .sort((a, b) => b.id - a.id);
+  }
 
-    return Array.from(this.products.values()).filter(p => 
-      p.title.toLowerCase().includes(term) ||
-      p.tags.toLowerCase().includes(term) ||
-      p.notes.toLowerCase().includes(term)
-    ).sort((a, b) => b.id - a.id);
+  // ── Categories ──────────────────────────────
+
+  private _loadCategories() {
+    const saved = storage.getItem('sqlite_categories_db');
+    if (saved) {
+      try {
+        const list = JSON.parse(saved) as Category[];
+        let maxId = 0;
+        list.forEach(c => {
+          this.categories.set(c.id, c);
+          if (c.id > maxId) maxId = c.id;
+        });
+        this.categoryAutoIncrementId = maxId + 1;
+      } catch (e) {
+        console.error('Failed to parse sqlite_categories_db', e);
+        this._seedCategories();
+      }
+    } else {
+      this._seedCategories();
+    }
+  }
+
+  private _seedCategories() {
+    const defaults: Omit<Category, 'id' | 'created_at'>[] = [
+      { name: 'Engine Parts',  name_ar: 'أجزاء المحرك' },
+      { name: 'Propellers',    name_ar: 'رفاصات (بروبيلر)' },
+      { name: 'Filters',       name_ar: 'فلاتر' },
+      { name: 'Electrical',    name_ar: 'كهرباء' },
+      { name: 'General',       name_ar: 'عام' },
+      { name: 'Fuel System',   name_ar: 'منظومة الوقود' },
+      { name: 'Steering',      name_ar: 'توجيه' },
+      { name: 'Hull & Body',   name_ar: 'الهيكل والجسم' },
+    ];
+    const now = new Date().toISOString();
+    defaults.forEach(c => {
+      const id = this.categoryAutoIncrementId++;
+      this.categories.set(id, { id, ...c, created_at: now });
+    });
+    this._saveCategories();
+  }
+
+  private _saveCategories() {
+    const list = Array.from(this.categories.values());
+    storage.setItem('sqlite_categories_db', JSON.stringify(list));
+  }
+
+  async getAllCategories(): Promise<Category[]> {
+    await this.initialize();
+    return Array.from(this.categories.values()).sort((a, b) => a.id - b.id);
+  }
+
+  async createCategory(name: string, name_ar: string = ''): Promise<Category> {
+    await this.initialize();
+    // Prevent duplicates (case-insensitive)
+    const duplicate = Array.from(this.categories.values()).find(
+      c => c.name.toLowerCase() === name.trim().toLowerCase()
+    );
+    if (duplicate) return duplicate;
+
+    const id = this.categoryAutoIncrementId++;
+    const category: Category = {
+      id,
+      name: name.trim(),
+      name_ar: name_ar.trim() || name.trim(),
+      created_at: new Date().toISOString(),
+    };
+    this.categories.set(id, category);
+    this._saveCategories();
+    return category;
+  }
+
+  async deleteCategory(id: number): Promise<boolean> {
+    await this.initialize();
+    const deleted = this.categories.delete(id);
+    if (deleted) this._saveCategories();
+    return deleted;
   }
 }
 
 export const db = new LocalDatabase();
 export default db;
+
