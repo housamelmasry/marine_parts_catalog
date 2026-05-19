@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Pressable, ViewStyle } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
 import { useAppState } from '../../app/store';
 import { Text } from '../ui/Text';
@@ -19,6 +20,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const { colors, spacing } = useTheme();
   const { goBack, navigationStack } = useAppState();
+  const insets = useSafeAreaInsets();
 
   const canGoBack = showBack ?? navigationStack.length > 1;
 
@@ -30,7 +32,8 @@ export const Header: React.FC<HeaderProps> = ({
           backgroundColor: colors.surface,
           borderBottomColor: colors.border,
           paddingHorizontal: spacing.lg,
-          paddingVertical: spacing.md,
+          paddingTop: insets.top,
+          height: 56 + insets.top,
         },
         style,
       ]}
@@ -62,7 +65,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
-    height: 56,
   },
   leftContainer: {
     width: 60,

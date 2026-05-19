@@ -216,10 +216,10 @@ export const ProductDetailScreen: React.FC = () => {
           styles.navyHeader,
           {
             backgroundColor: '#0B2043',
-            paddingTop: insets.top + spacing.sm,
-            paddingBottom: spacing.sm,
+            paddingTop: insets.top,
             paddingHorizontal: spacing.md,
             flexDirection: isRTL ? 'row-reverse' : 'row',
+            height: 60 + insets.top,
           },
         ]}
       >
@@ -359,7 +359,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    height: 60,
   },
   headerButton: {
     paddingHorizontal: 12,
