@@ -1,13 +1,14 @@
 package com.marine_parts_catalog
 
 import android.app.Application
+import cl.json.ShareApplication
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 
-class MainApplication : Application(), ReactApplication {
+class MainApplication : Application(), ReactApplication, ShareApplication {
 
   override val reactHost: ReactHost by lazy {
     getDefaultReactHost(
@@ -24,4 +25,6 @@ class MainApplication : Application(), ReactApplication {
     super.onCreate()
     loadReactNative(this)
   }
+
+  override fun getFileProviderAuthority(): String = "${BuildConfig.APPLICATION_ID}.provider"
 }
