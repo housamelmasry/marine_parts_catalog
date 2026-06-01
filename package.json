@@ -16,6 +16,7 @@
     "react-native-fs": "^2.20.0",
     "react-native-image-picker": "^8.2.1",
     "react-native-safe-area-context": "^5.5.2",
+    "react-native-share": "^12.3.1",
     "zustand": "^5.0.13"
   },
   "devDependencies": {
