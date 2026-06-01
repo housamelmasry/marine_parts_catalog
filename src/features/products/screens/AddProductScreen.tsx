@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, ScrollView, Alert, Pressable, Image, ActivityIndicator } from 'react-native';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../hooks/useTheme';
 import { useUIStore } from '../../../app/store';
 import { productRepository } from '../repository/ProductRepository';
@@ -17,13 +18,14 @@ export const AddProductScreen: React.FC = () => {
   const { colors, spacing, isDark } = useTheme();
   const { goBack } = useUIStore();
   const { t, isRTL } = useTranslation();
+  const insets = useSafeAreaInsets();
 
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
   const [price, setPrice] = useState('');
   const [tags, setTags] = useState('');
   const [notes, setNotes] = useState('');
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photoUris, setPhotoUris] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   // Tracks while we copy the picked image into permanent app storage
   const [copyingImage, setCopyingImage] = useState(false);
@@ -45,7 +47,7 @@ export const AddProductScreen: React.FC = () => {
         result = await launchImageLibrary({
           mediaType: 'photo',
           quality: 0.8,
-          selectionLimit: 1,
+          selectionLimit: 10,
         });
       }
 
@@ -60,15 +62,16 @@ export const AddProductScreen: React.FC = () => {
       }
 
       if (result.assets && result.assets.length > 0) {
-        const rawUri = result.assets[0].uri;
-        if (!rawUri) return;
-
-        // Immediately copy the image into the app's permanent documents folder.
-        // This converts the ephemeral content:// URI (Android) into a stable file:// path.
         setCopyingImage(true);
         try {
-          const permanentUri = await imageService.copyToAppStorage(rawUri);
-          setPhotoUri(permanentUri);
+          const copiedUris: string[] = [];
+          for (const asset of result.assets) {
+            if (asset.uri) {
+              const permanentUri = await imageService.copyToAppStorage(asset.uri);
+              copiedUris.push(permanentUri);
+            }
+          }
+          setPhotoUris(prev => [...prev, ...copiedUris]);
         } finally {
           setCopyingImage(false);
         }
@@ -85,8 +88,8 @@ export const AddProductScreen: React.FC = () => {
     }
   };
 
-  const handleRemovePhoto = () => {
-    setPhotoUri(null);
+  const handleRemovePhoto = (index: number) => {
+    setPhotoUris(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSave = async () => {
@@ -98,9 +101,9 @@ export const AddProductScreen: React.FC = () => {
     try {
       setSaving(true);
 
-      // photoUri is already a permanent file:// path (copied in handleSelectPhoto).
+      // photoUris are already permanent file:// paths (copied in handleSelectPhoto).
       // If no photo was selected, fall back to the default icon key.
-      const imagePath = photoUri || 'defaultIcon';
+      const imagePath = photoUris.length > 0 ? photoUris.join(',') : 'defaultIcon';
 
       await productRepository.create({
         title: title.trim(),
@@ -144,39 +147,56 @@ export const AddProductScreen: React.FC = () => {
             <View style={[styles.dashedBorder, { borderColor: colors.primary, alignItems: 'center', justifyContent: 'center', minHeight: 160 }]}>
               <ActivityIndicator size="large" color={colors.primary} />
               <Text variant="caption" color={colors.textSecondary} style={{ marginTop: 12 }} align="center">
-                {isRTL ? '⏳ جارٍ حفظ الصورة في التخزين المحلي...' : '⏳ Saving image to local storage...'}
+                {isRTL ? '⏳ جارٍ حفظ الصور في التخزين المحلي...' : '⏳ Saving images to local storage...'}
               </Text>
             </View>
-          ) : photoUri ? (
+          ) : photoUris.length > 0 ? (
             <View>
-              <View style={styles.previewContainer}>
-                <Image source={{ uri: photoUri }} style={styles.previewImage} resizeMode="cover" />
-                <View style={styles.changeOverlay}>
-                  <Pressable
-                    onPress={() => handleSelectPhoto('gallery')}
-                    style={[styles.smallBtn, { backgroundColor: colors.primary }]}
-                  >
-                    <Text color="#FFFFFF" variant="caption" weight="bold">🔄 {isRTL ? 'تغيير' : 'Change'}</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={handleRemovePhoto}
-                    style={[styles.smallBtn, { backgroundColor: '#D9534F', marginLeft: 8 }]}
-                  >
-                    <Text color="#FFFFFF" variant="caption" weight="bold">🗑️ {isRTL ? 'إزالة' : 'Remove'}</Text>
-                  </Pressable>
-                </View>
-                <View style={styles.indicatorBadge}>
-                  <Text style={{ fontSize: 10, marginRight: 4 }}>✅</Text>
-                  <Text variant="caption" color="#2D6A4F" weight="bold">
-                    {isRTL ? 'محفوظة محلياً' : 'Saved Locally'}
-                  </Text>
-                </View>
-              </View>
-              {/* Show the permanent file path stored in the DB */}
-              <View style={{ marginTop: 8, paddingHorizontal: 4 }}>
-                <Text variant="caption" color={colors.textSecondary} style={{ fontSize: 10 }} numberOfLines={2}>
-                  📂 {photoUri}
-                </Text>
+              <Text variant="caption" color={colors.textSecondary} weight="bold" style={{ marginBottom: 8, textAlign: isRTL ? 'right' : 'left' }}>
+                {isRTL ? `الصور المختارة (${photoUris.length})` : `Selected Photos (${photoUris.length})`}
+              </Text>
+              
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 8 }}>
+                {photoUris.map((uri, index) => (
+                  <View key={uri + index} style={{ width: 140, height: 140, borderRadius: 8, overflow: 'hidden', position: 'relative' }}>
+                    <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                    <Pressable
+                      onPress={() => handleRemovePhoto(index)}
+                      style={{
+                        position: 'absolute',
+                        top: 6,
+                        right: 6,
+                        backgroundColor: 'rgba(217, 83, 79, 0.9)',
+                        width: 26,
+                        height: 26,
+                        borderRadius: 13,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: 'bold' }}>✕</Text>
+                    </Pressable>
+                    {index === 0 && (
+                      <View style={{ position: 'absolute', bottom: 6, left: 6, backgroundColor: 'rgba(45, 106, 79, 0.9)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                        <Text style={{ color: '#FFFFFF', fontSize: 8, fontWeight: 'bold' }}>
+                          {isRTL ? 'الرئيسية' : 'Primary'}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </ScrollView>
+
+              {/* Compact Picker Row to Add More */}
+              <View style={[styles.pickerRow, { flexDirection: isRTL ? 'row-reverse' : 'row', marginTop: 12, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 12 }]}>
+                <Pressable onPress={() => handleSelectPhoto('camera')} style={[styles.actionButton, { backgroundColor: isDark ? '#1E293B' : '#EBF0F5', marginRight: 6 }]}>
+                  <Text style={{ fontSize: 16, marginRight: 6 }}>📸</Text>
+                  <Text variant="caption" weight="bold">{isRTL ? 'كاميرا' : 'Camera'}</Text>
+                </Pressable>
+                <Pressable onPress={() => handleSelectPhoto('gallery')} style={[styles.actionButton, { backgroundColor: isDark ? '#1E293B' : '#EBF0F5' }]}>
+                  <Text style={{ fontSize: 16, marginRight: 6 }}>🖼️</Text>
+                  <Text variant="caption" weight="bold">{isRTL ? 'معرض' : 'Gallery'}</Text>
+                </Pressable>
               </View>
             </View>
           ) : (
@@ -184,12 +204,12 @@ export const AddProductScreen: React.FC = () => {
               {/* How image upload works — info banner */}
               <View style={{ backgroundColor: isDark ? '#1A2840' : '#EBF4FF', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 20, width: '100%' }}>
                 <Text variant="caption" color={colors.primary} weight="bold" style={{ marginBottom: 4 }}>
-                  {isRTL ? '📌 كيف تعمل إضافة الصورة؟' : '📌 How image upload works'}
+                  {isRTL ? '📌 كيف تعمل إضافة الصور المتعددة؟' : '📌 How multiple image upload works'}
                 </Text>
                 <Text variant="caption" color={colors.textSecondary} style={{ lineHeight: 18 }}>
                   {isRTL
-                    ? 'اختر صورة من الكاميرا أو المعرض. سيتم نسخها تلقائياً إلى مجلد التطبيق الخاص بك وحفظ مسارها في قاعدة البيانات.'
-                    : 'Pick an image from camera or gallery. It will be automatically copied into the app\'s private folder and its path saved to the database.'}
+                    ? 'يمكنك اختيار عدة صور من المعرض أو الكاميرا. سيتم حفظها محلياً في جهازك بالكامل وعرضها كمعرض صور متحرك.'
+                    : 'You can pick multiple images from camera or gallery. They will be saved entirely to your local device storage and viewed in a sliding gallery carousel.'}
                 </Text>
               </View>
 
@@ -216,7 +236,7 @@ export const AddProductScreen: React.FC = () => {
                     {isRTL ? 'المعرض' : 'Gallery'}
                   </Text>
                   <Text variant="caption" color={colors.textSecondary} style={{ fontSize: 11 }}>
-                    {isRTL ? 'من معرض الصور' : 'From Gallery'}
+                    {isRTL ? 'اختر صوراً' : 'Choose Photos'}
                   </Text>
                 </Pressable>
 
@@ -235,7 +255,7 @@ export const AddProductScreen: React.FC = () => {
               </View>
 
               <Text variant="caption" color={colors.textSecondary} weight="medium" align="center" style={{ marginTop: 16 }}>
-                {isRTL ? 'اختر صورة من هاتفك المحمول' : 'Select image from your phone'}
+                {isRTL ? 'اختر صورة أو أكثر من هاتفك' : 'Select one or more images from your phone'}
               </Text>
             </View>
           )}
@@ -313,7 +333,7 @@ export const AddProductScreen: React.FC = () => {
       </ScrollView>
 
       {/* Floating Save Button container at bottom */}
-      <View style={[styles.bottomActionBar, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+      <View style={[styles.bottomActionBar, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom, 24) }]}>
         <Button
           title={t('saveProductBtn')}
           onPress={handleSave}
@@ -447,7 +467,6 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 24,
     borderTopWidth: 1,
     elevation: 8,
     shadowColor: '#000000',

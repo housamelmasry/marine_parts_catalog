@@ -26,6 +26,8 @@ interface UIState {
   setSearchQuery: (query: string) => void;
   selectedTag: string; // Active filter chip, e.g. '#yamaha'
   setSelectedTag: (tag: string) => void;
+  selectedCategory: string; // Active category filter, e.g. 'Engine Parts'
+  setSelectedCategory: (category: string) => void;
 
   // Selected Product for Details
   selectedProduct: Product | null;
@@ -45,6 +47,7 @@ export const useUIStore = create<UIState>((set) => ({
   language: (storage.getItem('language') as 'ar' | 'en') || 'ar',
   searchQuery: '',
   selectedTag: 'All',
+  selectedCategory: 'All',
   selectedProduct: null,
   currentScreen: 'home',
   navigationStack: ['home'],
@@ -62,6 +65,7 @@ export const useUIStore = create<UIState>((set) => ({
 
   setSearchQuery: (query) => set({ searchQuery: query }),
   setSelectedTag: (tag) => set({ selectedTag: tag }),
+  setSelectedCategory: (category) => set({ selectedCategory: category }),
   setSelectedProduct: (product) => set({ selectedProduct: product }),
 
   navigateTo: (screen) => set((state) => {
@@ -89,6 +93,7 @@ export const useUIStore = create<UIState>((set) => ({
     selectedProduct: null,
     searchQuery: '',
     selectedTag: 'All',
+    selectedCategory: 'All',
   }),
 }));
 

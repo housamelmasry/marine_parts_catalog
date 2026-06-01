@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, StatusBar, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, StatusBar, StyleSheet, View } from 'react-native';
 import { AppProvider } from './providers/AppProvider';
 import { RootNavigator } from '../navigation/RootNavigator';
 import { useTheme } from '../hooks/useTheme';
@@ -21,7 +21,12 @@ function AppContent() {
 function SplashScreen() {
   return (
     <View style={styles.splash}>
-      <ActivityIndicator size="large" color="#4A90D9" />
+      <Image
+        source={require('../../logo.png')}
+        style={styles.splashLogo}
+        resizeMode="contain"
+      />
+      <ActivityIndicator size="small" color="#4A90D9" style={styles.splashSpinner} />
     </View>
   );
 }
@@ -83,6 +88,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#0A1628',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  splashLogo: {
+    width: '60%',
+    maxWidth: 240,
+    aspectRatio: 1024 / 1536,
+  },
+  splashSpinner: {
+    position: 'absolute',
+    bottom: 80,
   },
 });
 

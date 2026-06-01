@@ -83,6 +83,20 @@ export class ImageService {
       return false;
     }
   }
+
+  getProductImages(path: string | undefined): string[] {
+    if (!path) return [];
+    // If it is a seed asset placeholder or single path
+    if (this.placeholderImages[path]) return [path];
+    return path.split(',').map(s => s.trim()).filter(Boolean);
+  }
+
+  async deleteProductImages(paths: string | undefined): Promise<void> {
+    const list = this.getProductImages(paths);
+    for (const p of list) {
+      await this.deleteImage(p);
+    }
+  }
 }
 
 export const imageService = new ImageService();

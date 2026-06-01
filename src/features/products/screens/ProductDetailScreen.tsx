@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, ScrollView, Alert, Pressable, Platform, Image } from 'react-native';
+import { StyleSheet, View, ScrollView, Alert, Pressable, Platform, Image, FlatList, Dimensions, ActivityIndicator } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../hooks/useTheme';
@@ -34,23 +34,52 @@ export const ProductDetailScreen: React.FC = () => {
   const [editPrice, setEditPrice] = useState(selectedProduct?.price?.toString() || '');
   const [editTags, setEditTags] = useState(selectedProduct?.tags || '');
   const [editNotes, setEditNotes] = useState(selectedProduct?.notes || '');
-  const [newPhotoUri, setNewPhotoUri] = useState<string | null>(null);
+  const [editPhotoUris, setEditPhotoUris] = useState<string[]>(imageService.getProductImages(selectedProduct?.image_path));
   const [updating, setUpdating] = useState(false);
+  const [copyingImage, setCopyingImage] = useState(false);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   if (!selectedProduct) return null;
 
-  const handleSelectPhoto = async () => {
+  const handleSelectPhoto = async (source: 'camera' | 'gallery') => {
     try {
-      const result = await launchImageLibrary({
-        mediaType: 'photo',
-        quality: 0.8,
-      });
+      let result;
+      if (source === 'camera') {
+        const { launchCamera } = require('react-native-image-picker');
+        result = await launchCamera({
+          mediaType: 'photo',
+          quality: 0.8,
+          saveToPhotos: false,
+        });
+      } else {
+        const { launchImageLibrary } = require('react-native-image-picker');
+        result = await launchImageLibrary({
+          mediaType: 'photo',
+          quality: 0.8,
+          selectionLimit: 10,
+        });
+      }
       
+      if (result.didCancel) return;
+
       if (result.assets && result.assets.length > 0) {
-        setNewPhotoUri(result.assets[0].uri || null);
+        setCopyingImage(true);
+        try {
+          const copiedUris: string[] = [];
+          for (const asset of result.assets) {
+            if (asset.uri) {
+              const permanentUri = await imageService.copyToAppStorage(asset.uri);
+              copiedUris.push(permanentUri);
+            }
+          }
+          setEditPhotoUris(prev => [...prev, ...copiedUris]);
+        } finally {
+          setCopyingImage(false);
+        }
       }
     } catch (e) {
-      console.warn('launchImageLibrary native module is null / failed to load', e);
+      setCopyingImage(false);
+      console.warn('Image picker failed or was cancelled', e);
       Alert.alert(
         isRTL ? 'معرض الصور غير متوفر' : 'Gallery Unavailable',
         isRTL
@@ -58,6 +87,10 @@ export const ProductDetailScreen: React.FC = () => {
           : 'Image gallery is not supported in this preview build. Please rebuild the native binary.'
       );
     }
+  };
+
+  const handleRemovePhoto = (index: number) => {
+    setEditPhotoUris(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleShare = () => {
@@ -76,7 +109,7 @@ export const ProductDetailScreen: React.FC = () => {
           onPress: async () => {
             try {
               await productRepository.delete(selectedProduct.id);
-              await imageService.deleteImage(selectedProduct.image_path);
+              await imageService.deleteProductImages(selectedProduct.image_path);
               Alert.alert('Deleted', 'The product has been removed from your local database.');
               goBack(); // Back to Home
             } catch (e: any) {
@@ -97,13 +130,7 @@ export const ProductDetailScreen: React.FC = () => {
     try {
       setUpdating(true);
       
-      let updatedImagePath = selectedProduct.image_path;
-      let updatedThumbnailPath = selectedProduct.thumbnail_path;
-
-      if (newPhotoUri) {
-        updatedImagePath = await imageService.copyToAppStorage(newPhotoUri);
-        updatedThumbnailPath = await imageService.generateThumbnail(newPhotoUri);
-      }
+      const updatedImagePath = editPhotoUris.length > 0 ? editPhotoUris.join(',') : 'defaultIcon';
 
       const updated = await productRepository.update(selectedProduct.id, {
         title: editTitle.trim(),
@@ -112,7 +139,7 @@ export const ProductDetailScreen: React.FC = () => {
         category: editCategory.trim(),
         notes: editNotes.trim(),
         image_path: updatedImagePath,
-        thumbnail_path: updatedThumbnailPath,
+        thumbnail_path: updatedImagePath,
       });
 
       setUpdating(false);
@@ -166,13 +193,71 @@ export const ProductDetailScreen: React.FC = () => {
           >
             {t('productPhotoLabel')}
           </Text>
-          <Card style={{ marginBottom: spacing.lg, alignItems: 'center' }}>
-            {newPhotoUri || (selectedProduct.image_path && selectedProduct.image_path.startsWith('file://')) ? (
-              <Image source={{ uri: newPhotoUri || selectedProduct.image_path }} style={{ width: '100%', height: 200, borderRadius: 8, marginBottom: 12 }} resizeMode="cover" />
+          <Card style={{ marginBottom: spacing.lg, padding: 12 }}>
+            {copyingImage ? (
+              <View style={{ padding: 24, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            ) : editPhotoUris.length > 0 ? (
+              <View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 8 }}>
+                  {editPhotoUris.map((uri, index) => {
+                    const isRealPhoto = uri.startsWith('file://');
+                    const symbol = imageService.getPlaceholderSymbol(uri);
+                    return (
+                      <View key={uri + index} style={{ width: 100, height: 100, borderRadius: 8, overflow: 'hidden', position: 'relative', backgroundColor: colors.surfaceSecondary, alignItems: 'center', justifyContent: 'center' }}>
+                        {isRealPhoto ? (
+                          <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                        ) : (
+                          <Text style={{ fontSize: 32 }}>{symbol}</Text>
+                        )}
+                        <Pressable
+                          onPress={() => handleRemovePhoto(index)}
+                          style={{
+                            position: 'absolute',
+                            top: 4,
+                            right: 4,
+                            backgroundColor: 'rgba(217, 83, 79, 0.9)',
+                            width: 22,
+                            height: 22,
+                            borderRadius: 11,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: 'bold' }}>✕</Text>
+                        </Pressable>
+                        {index === 0 && (
+                          <View style={{ position: 'absolute', bottom: 4, left: 4, backgroundColor: 'rgba(45, 106, 79, 0.9)', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 3 }}>
+                            <Text style={{ color: '#FFFFFF', fontSize: 7, fontWeight: 'bold' }}>
+                              {isRTL ? 'الرئيسية' : 'Primary'}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+                <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', gap: 10, marginTop: 8 }}>
+                  <Pressable onPress={() => handleSelectPhoto('camera')} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceSecondary, paddingVertical: 8, borderRadius: 8 }}>
+                    <Text style={{ fontSize: 14, marginRight: 6 }}>📸</Text>
+                    <Text variant="caption" weight="bold">{isRTL ? 'كاميرا' : 'Camera'}</Text>
+                  </Pressable>
+                  <Pressable onPress={() => handleSelectPhoto('gallery')} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceSecondary, paddingVertical: 8, borderRadius: 8 }}>
+                    <Text style={{ fontSize: 14, marginRight: 6 }}>🖼️</Text>
+                    <Text variant="caption" weight="bold">{isRTL ? 'معرض' : 'Gallery'}</Text>
+                  </Pressable>
+                </View>
+              </View>
             ) : (
-               <Text color={colors.textSecondary} style={{ marginBottom: 12, fontSize: 40 }}>{imageService.getPlaceholderSymbol(selectedProduct.image_path)}</Text>
+              <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+                <Text color={colors.textSecondary} style={{ marginBottom: 12, fontSize: 40 }}>⚙️</Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <Button title={isRTL ? '📸 كاميرا' : '📸 Camera'} onPress={() => handleSelectPhoto('camera')} variant="outline" size="small" />
+                  <Button title={isRTL ? '🖼️ معرض' : '🖼️ Gallery'} onPress={() => handleSelectPhoto('gallery')} variant="outline" size="small" />
+                </View>
+              </View>
             )}
-            <Button title={t('changePhoto')} onPress={handleSelectPhoto} variant="outline" />
           </Card>
 
           <Input
@@ -205,7 +290,10 @@ export const ProductDetailScreen: React.FC = () => {
   }
 
   // State 2: Detailed Product Profile View
-  const symbol = imageService.getPlaceholderSymbol(selectedProduct.image_path);
+  const images = imageService.getProductImages(selectedProduct.image_path);
+  const primaryImage = images[0] || '';
+  const symbol = imageService.getPlaceholderSymbol(primaryImage);
+  const hasRealPhotos = primaryImage && primaryImage.startsWith('file://');
   const tagChips = selectedProduct.tags.split(/\s+/).filter(Boolean);
 
   return (
@@ -247,11 +335,58 @@ export const ProductDetailScreen: React.FC = () => {
 
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
         {/* Large Product Image Header */}
-        <View style={[styles.imageBanner, { backgroundColor: '#F4F6F9', borderBottomWidth: 0 }]}>
-          {selectedProduct.image_path && selectedProduct.image_path.startsWith('file://') ? (
-             <Image source={{ uri: selectedProduct.image_path }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        <View style={[styles.imageBanner, { backgroundColor: '#F4F6F9', borderBottomWidth: 0, height: 260, position: 'relative' }]}>
+          {hasRealPhotos ? (
+            <View style={{ width: '100%', height: '100%' }}>
+              <FlatList
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                data={images}
+                keyExtractor={(item, index) => item + index}
+                onScroll={(e) => {
+                  const x = e.nativeEvent.contentOffset.x;
+                  const w = e.nativeEvent.layoutMeasurement.width || Dimensions.get('window').width;
+                  const index = Math.round(x / w);
+                  if (index !== activeImageIndex) {
+                    setActiveImageIndex(index);
+                  }
+                }}
+                scrollEventThrottle={16}
+                renderItem={({ item }) => (
+                  <View style={{ width: Dimensions.get('window').width, height: '100%' }}>
+                    <Image source={{ uri: item }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                  </View>
+                )}
+              />
+              {/* Pagination Dots overlay */}
+              {images.length > 1 && (
+                <View style={{
+                  position: 'absolute',
+                  bottom: 16,
+                  left: 0,
+                  right: 0,
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  gap: 6,
+                }}>
+                  {images.map((_, i) => (
+                    <View
+                      key={i}
+                      style={{
+                        width: i === activeImageIndex ? 16 : 8,
+                        height: 8,
+                        borderRadius: 4,
+                        backgroundColor: i === activeImageIndex ? '#0B2043' : 'rgba(11, 32, 67, 0.3)',
+                      }}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
           ) : (
-             <Text style={styles.largeSymbol}>{symbol}</Text>
+            <Text style={styles.largeSymbol}>{symbol}</Text>
           )}
         </View>
 
@@ -328,7 +463,7 @@ export const ProductDetailScreen: React.FC = () => {
             borderTopColor: colors.border,
             backgroundColor: '#FFFFFF',
             flexDirection: isRTL ? 'row-reverse' : 'row',
-            paddingBottom: Platform.OS === 'ios' ? insets.bottom + spacing.xs : spacing.md,
+            paddingBottom: insets.bottom > 0 ? insets.bottom + spacing.xs : spacing.md,
           },
         ]}
       >

@@ -72,7 +72,7 @@ export const RootNavigator: React.FC = () => {
           {
             backgroundColor: colors.surface,
             borderTopColor: colors.border,
-            paddingBottom: Platform.OS === 'ios' ? insets.bottom : spacing.md,
+            paddingBottom: Math.max(insets.bottom, spacing.md),
             paddingTop: spacing.md,
             flexDirection: isRTL ? 'row-reverse' : 'row',
           },

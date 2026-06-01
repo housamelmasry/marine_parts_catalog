@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { productRepository } from '../repository/ProductRepository';
 import { Product } from '../../../database/db';
+import { categoryRepository } from '../repository/CategoryRepository';
 
-export function useProducts(searchQuery: string, selectedTag: string) {
+export function useProducts(searchQuery: string, selectedTag: string, selectedCategory: string) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [allTags, setAllTags] = useState<string[]>([]);
@@ -17,9 +18,27 @@ export function useProducts(searchQuery: string, selectedTag: string) {
       // Filter by tag if selected
       let filtered = list;
       if (selectedTag && selectedTag !== 'All') {
-        filtered = list.filter(p => 
+        filtered = filtered.filter(p => 
           p.tags.toLowerCase().includes(selectedTag.toLowerCase())
         );
+      }
+
+      // Filter by category if selected — match against both EN and AR names
+      if (selectedCategory && selectedCategory !== 'All') {
+        const allCategories = await categoryRepository.getAll();
+        const matchedCategory = allCategories.find(
+          c => c.name === selectedCategory || c.name_ar === selectedCategory
+        );
+        if (matchedCategory) {
+          filtered = filtered.filter(p =>
+            p.category === matchedCategory.name || p.category === matchedCategory.name_ar
+          );
+        } else {
+          // Fallback: direct comparison
+          filtered = filtered.filter(p =>
+            p.category?.toLowerCase() === selectedCategory.toLowerCase()
+          );
+        }
       }
       
       setProducts(filtered);
@@ -40,7 +59,7 @@ export function useProducts(searchQuery: string, selectedTag: string) {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, selectedTag]);
+  }, [searchQuery, selectedTag, selectedCategory]);
 
   useEffect(() => {
     loadProducts();

@@ -1,6 +1,7 @@
-import { Alert, Share, Linking } from 'react-native';
+import { Alert, Share, Linking, Platform } from 'react-native';
 import { Product } from '../../database/db';
 import { Part } from '../../constants/mockData';
+import { imageService } from '../image';
 
 export const ShareService = {
   async shareProduct(product: Product): Promise<void> {
@@ -14,29 +15,59 @@ ${product.notes ? `*Notes*: ${product.notes}\n` : ''}
 Generated via Marine Parts App.
 `.trim();
 
-    try {
-      const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(text)}`;
-      const canOpen = await Linking.canOpenURL(whatsappUrl);
-      
-      if (canOpen) {
-        await Linking.openURL(whatsappUrl);
-      } else {
-        // Fallback to standard system share sheet
-        await Share.share({
-          title: product.title,
-          message: text,
-        });
+    const images = imageService.getProductImages(product.image_path);
+    const primaryImage = images[0] || '';
+    const hasCustomImage = primaryImage && primaryImage.startsWith('file://');
+
+    const shareTextOnly = async () => {
+      try {
+        const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(text)}`;
+        const canOpen = await Linking.canOpenURL(whatsappUrl);
+        
+        if (canOpen) {
+          await Linking.openURL(whatsappUrl);
+        } else {
+          await Share.share({
+            title: product.title,
+            message: text,
+          });
+        }
+      } catch (e: any) {
+        try {
+          await Share.share({
+            title: product.title,
+            message: text,
+          });
+        } catch (err: any) {
+          Alert.alert('Sharing Error', err.message);
+        }
       }
-    } catch (e: any) {
-      // Fallback in case Linking or Share fails
+    };
+
+    const shareWithImage = async () => {
       try {
         await Share.share({
           title: product.title,
           message: text,
+          url: Platform.OS === 'ios' ? primaryImage : undefined,
         });
-      } catch (err: any) {
-        Alert.alert('Sharing Error', err.message);
+      } catch (e: any) {
+        Alert.alert('Sharing Error', e.message);
       }
+    };
+
+    if (hasCustomImage) {
+      Alert.alert(
+        'Share Product Quote',
+        'How would you like to share this quote?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'WhatsApp Text Only', onPress: shareTextOnly },
+          { text: 'Share Sheet with Image', onPress: shareWithImage },
+        ]
+      );
+    } else {
+      await shareTextOnly();
     }
   },
 

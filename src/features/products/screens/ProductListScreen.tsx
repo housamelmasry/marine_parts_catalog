@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -18,21 +18,42 @@ import { Card } from '../../../shared/components/Card';
 import { Header } from '../../../shared/components/Header';
 import { SearchInput } from '../../../shared/components/SearchInput';
 import { imageService } from '../../../services/image';
-import { Product } from '../../../database/db';
+import { Product, Category } from '../../../database/db';
+import { categoryRepository } from '../repository/CategoryRepository';
+import { useTranslation } from '../../../utils/i18n';
 
 export const ProductListScreen: React.FC = () => {
   const { colors, spacing } = useTheme();
   const insets = useSafeAreaInsets();
+  const { t, isRTL } = useTranslation();
   const {
     searchQuery,
     setSearchQuery,
     selectedTag,
     setSelectedTag,
+    selectedCategory,
+    setSelectedCategory,
     setSelectedProduct,
     navigateTo,
   } = useUIStore();
 
-  const { products, loading, allTags } = useProducts(searchQuery, selectedTag);
+  const { products, loading, allTags } = useProducts(searchQuery, selectedTag, selectedCategory);
+
+  const [categories, setCategories] = useState<Category[]>([]);
+  const categoryMap = new Map(categories.map(c => [c.name, c]));
+
+  const loadCategories = useCallback(async () => {
+    try {
+      const list = await categoryRepository.getAll();
+      setCategories(list);
+    } catch (e) {
+      console.error('Failed to load categories', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCategories();
+  }, [loadCategories]);
 
   const handleSelectProduct = (product: Product) => {
     setSelectedProduct(product);
@@ -40,8 +61,10 @@ export const ProductListScreen: React.FC = () => {
   };
 
   const renderProductItem = ({ item }: { item: Product }) => {
-    const symbol = imageService.getPlaceholderSymbol(item.image_path);
-    const isRealPhoto = item.image_path && item.image_path.startsWith('file://');
+    const images = imageService.getProductImages(item.image_path);
+    const primaryImage = images[0] || '';
+    const symbol = imageService.getPlaceholderSymbol(primaryImage);
+    const isRealPhoto = primaryImage && primaryImage.startsWith('file://');
 
     return (
       <View style={styles.gridCell}>
@@ -62,7 +85,7 @@ export const ProductListScreen: React.FC = () => {
           >
             {isRealPhoto ? (
               <Image
-                source={{ uri: item.image_path }}
+                source={{ uri: primaryImage }}
                 style={{ width: '100%', height: '100%', borderRadius: spacing.sm }}
                 resizeMode="cover"
               />
@@ -75,7 +98,10 @@ export const ProductListScreen: React.FC = () => {
           {item.category ? (
             <View style={[styles.categoryBadge, { backgroundColor: colors.surfaceSecondary }]}>
               <Text variant="caption" weight="bold" color={colors.secondary} numberOfLines={1}>
-                {item.category}
+                {(() => {
+                  const cat = categoryMap.get(item.category);
+                  return isRTL ? (cat?.name_ar || item.category) : item.category;
+                })()}
               </Text>
             </View>
           ) : null}
@@ -110,13 +136,13 @@ export const ProductListScreen: React.FC = () => {
       >
         <View style={{ flex: 1 }}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>
-            Loay Marine Parts
+            LOAY Marine Parts
           </Text>
-          <Text
+          {/* <Text
             style={[styles.headerSubtitle, { color: colors.textSecondary }]}
           >
             Catalog
-          </Text>
+          </Text> */}
         </View>
         <Pressable
           onPress={() =>
@@ -174,6 +200,45 @@ export const ProductListScreen: React.FC = () => {
         </View>
       </View>
 
+      {/* Category Filter chips */}
+      <View style={styles.filterBar}>
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={[{ id: 0, name: 'All', name_ar: 'الكل', created_at: '' }, ...categories]}
+          keyExtractor={item => item.name}
+          contentContainerStyle={styles.filterList}
+          renderItem={({ item }) => {
+            const isAllChip = item.id === 0;
+            const displayName = isRTL ? item.name_ar : item.name;
+            const isSelected = isAllChip
+              ? selectedCategory === 'All'
+              : (selectedCategory === item.name || selectedCategory === item.name_ar);
+            return (
+              <Pressable
+                onPress={() => setSelectedCategory(isAllChip ? 'All' : (isRTL ? item.name_ar : item.name))}
+                style={[
+                  styles.filterChip,
+                  {
+                    backgroundColor: isSelected
+                      ? colors.secondary
+                      : colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Text
+                  weight="bold"
+                  color={isSelected ? '#FFFFFF' : colors.text}
+                >
+                  {displayName}
+                </Text>
+              </Pressable>
+            );
+          }}
+        />
+      </View>
+
       {/* Dynamic Tag Filter chips */}
       <View style={styles.filterBar}>
         <FlatList
@@ -209,7 +274,7 @@ export const ProductListScreen: React.FC = () => {
         />
       </View>
       {/* Recent / Quick Spares section */}
-      {!searchQuery && (
+      {/* {!searchQuery && (
         <View style={{ marginBottom: spacing.md }}>
           <View
             style={{
@@ -290,7 +355,7 @@ export const ProductListScreen: React.FC = () => {
             )}
           />
         </View>
-      )}
+      )} */}
 
 
       {/* Two-Column Grid list */}
