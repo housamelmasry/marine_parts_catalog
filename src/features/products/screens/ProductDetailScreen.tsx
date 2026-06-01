@@ -13,6 +13,7 @@ import { Header } from '../../../shared/components/Header';
 import { Button } from '../../../shared/components/Button';
 import { Input } from '../../../shared/ui/Input';
 import { useTranslation } from '../../../utils/i18n';
+import { CategoryPickerField } from '../components/CategoryPickerField';
 
 export const ProductDetailScreen: React.FC = () => {
   const { colors, spacing } = useTheme();
@@ -141,12 +142,11 @@ export const ProductDetailScreen: React.FC = () => {
             style={isRTL ? { textAlign: 'right' } : undefined}
           />
 
-          <Input
+          <CategoryPickerField
             label={t('categoryLabel')}
             value={editCategory}
-            onChangeText={setEditCategory}
-            placeholder={isRTL ? 'مثال: الفلاتر' : 'e.g. Filters'}
-            style={isRTL ? { textAlign: 'right' } : undefined}
+            onChange={setEditCategory}
+            isRTL={isRTL}
           />
 
           <Input

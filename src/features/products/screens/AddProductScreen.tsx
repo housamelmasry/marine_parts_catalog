@@ -11,6 +11,7 @@ import { Header } from '../../../shared/components/Header';
 import { Button } from '../../../shared/components/Button';
 import { Input } from '../../../shared/ui/Input';
 import { useTranslation } from '../../../utils/i18n';
+import { CategoryPickerField } from '../components/CategoryPickerField';
 
 export const AddProductScreen: React.FC = () => {
   const { colors, spacing, isDark } = useTheme();
@@ -250,12 +251,11 @@ export const AddProductScreen: React.FC = () => {
             style={isRTL ? { textAlign: 'right' } : undefined}
           />
 
-          <Input
+          <CategoryPickerField
             label={t('categoryLabel')}
             value={category}
-            onChangeText={setCategory}
-            placeholder={isRTL ? 'مثال: أجزاء المحرك' : 'e.g. Engine Parts'}
-            style={isRTL ? { textAlign: 'right' } : undefined}
+            onChange={setCategory}
+            isRTL={isRTL}
           />
 
           <Input
