@@ -1,5 +1,15 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, ScrollView, Alert, Pressable, Image, ActivityIndicator } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  ScrollView,
+  Alert,
+  Pressable,
+  Image,
+  ActivityIndicator,
+  PermissionsAndroid,
+  Platform,
+} from 'react-native';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../hooks/useTheme';
@@ -30,10 +40,37 @@ export const AddProductScreen: React.FC = () => {
   // Tracks while we copy the picked image into permanent app storage
   const [copyingImage, setCopyingImage] = useState(false);
 
+  const requestCameraPermission = async (): Promise<boolean> => {
+    if (Platform.OS !== 'android') return true;
+
+    const granted = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.CAMERA,
+      {
+        title: 'Camera Permission',
+        message: 'This app needs camera access to take product photos.',
+        buttonPositive: 'OK',
+        buttonNegative: 'Cancel',
+      },
+    );
+
+    return granted === PermissionsAndroid.RESULTS.GRANTED;
+  };
+
   const handleSelectPhoto = async (source: 'camera' | 'gallery' | 'files') => {
     try {
       let result;
       if (source === 'camera') {
+        const isGranted = await requestCameraPermission();
+        if (!isGranted) {
+          Alert.alert(
+            isRTL ? 'أذونات الكاميرا مطلوبة' : 'Camera Permission Required',
+            isRTL
+              ? 'يرجى تمكين إذن الكاميرا من إعدادات التطبيق لتتمكن من التقاط الصور.'
+              : 'Please enable camera permission in app settings to take photos.',
+          );
+          return;
+        }
+
         // Opens the device camera to take a new photo
         result = await launchCamera({
           mediaType: 'photo',
@@ -56,7 +93,8 @@ export const AddProductScreen: React.FC = () => {
       if (result.errorCode) {
         Alert.alert(
           isRTL ? 'خطأ في الوصول' : 'Access Error',
-          result.errorMessage || (isRTL ? 'تعذر الوصول إلى الصور.' : 'Could not access photos.')
+          result.errorMessage ||
+            (isRTL ? 'تعذر الوصول إلى الصور.' : 'Could not access photos.'),
         );
         return;
       }
@@ -67,7 +105,9 @@ export const AddProductScreen: React.FC = () => {
           const copiedUris: string[] = [];
           for (const asset of result.assets) {
             if (asset.uri) {
-              const permanentUri = await imageService.copyToAppStorage(asset.uri);
+              const permanentUri = await imageService.copyToAppStorage(
+                asset.uri,
+              );
               copiedUris.push(permanentUri);
             }
           }
@@ -83,7 +123,7 @@ export const AddProductScreen: React.FC = () => {
         isRTL ? 'معرض الصور غير متوفر' : 'Media Store Unavailable',
         isRTL
           ? 'تعذر الوصول إلى وسائط التخزين. يرجى التحقق من أذونات التطبيق.'
-          : 'Could not access local media storage. Please verify camera & gallery permissions.'
+          : 'Could not access local media storage. Please verify camera & gallery permissions.',
       );
     }
   };
@@ -103,7 +143,8 @@ export const AddProductScreen: React.FC = () => {
 
       // photoUris are already permanent file:// paths (copied in handleSelectPhoto).
       // If no photo was selected, fall back to the default icon key.
-      const imagePath = photoUris.length > 0 ? photoUris.join(',') : 'defaultIcon';
+      const imagePath =
+        photoUris.length > 0 ? photoUris.join(',') : 'defaultIcon';
 
       await productRepository.create({
         title: title.trim(),
@@ -128,13 +169,31 @@ export const AddProductScreen: React.FC = () => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Header title={t('addNewProduct')} showBack />
 
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 110 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        
+      <ScrollView
+        contentContainerStyle={{ padding: spacing.lg, paddingBottom: 110 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         {/* Offline Stored Locally Badge */}
-        <View style={[styles.badgeContainer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-          <View style={[styles.localBadge, { backgroundColor: isDark ? '#1E293B' : '#0B2043' }]}>
+        <View
+          style={[
+            styles.badgeContainer,
+            { flexDirection: isRTL ? 'row-reverse' : 'row' },
+          ]}
+        >
+          <View
+            style={[
+              styles.localBadge,
+              { backgroundColor: isDark ? '#1E293B' : '#0B2043' },
+            ]}
+          >
             <Text style={styles.badgeIcon}>🛢️</Text>
-            <Text variant="caption" weight="bold" color="#FFFFFF" style={styles.badgeText}>
+            <Text
+              variant="caption"
+              weight="bold"
+              color="#FFFFFF"
+              style={styles.badgeText}
+            >
               {isRTL ? 'تخزين محلي آمن' : 'STORED LOCALLY'}
             </Text>
           </View>
@@ -144,22 +203,63 @@ export const AddProductScreen: React.FC = () => {
         <Card style={styles.pickerCard}>
           {copyingImage ? (
             // Shown while the image is being copied into permanent app storage
-            <View style={[styles.dashedBorder, { borderColor: colors.primary, alignItems: 'center', justifyContent: 'center', minHeight: 160 }]}>
+            <View
+              style={[
+                styles.dashedBorder,
+                {
+                  borderColor: colors.primary,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: 160,
+                },
+              ]}
+            >
               <ActivityIndicator size="large" color={colors.primary} />
-              <Text variant="caption" color={colors.textSecondary} style={{ marginTop: 12 }} align="center">
-                {isRTL ? '⏳ جارٍ حفظ الصور في التخزين المحلي...' : '⏳ Saving images to local storage...'}
+              <Text
+                variant="caption"
+                color={colors.textSecondary}
+                style={{ marginTop: 12 }}
+                align="center"
+              >
+                {isRTL
+                  ? '⏳ جارٍ حفظ الصور في التخزين المحلي...'
+                  : '⏳ Saving images to local storage...'}
               </Text>
             </View>
           ) : photoUris.length > 0 ? (
             <View>
-              <Text variant="caption" color={colors.textSecondary} weight="bold" style={{ marginBottom: 8, textAlign: isRTL ? 'right' : 'left' }}>
-                {isRTL ? `الصور المختارة (${photoUris.length})` : `Selected Photos (${photoUris.length})`}
+              <Text
+                variant="caption"
+                color={colors.textSecondary}
+                weight="bold"
+                style={{ marginBottom: 8, textAlign: isRTL ? 'right' : 'left' }}
+              >
+                {isRTL
+                  ? `الصور المختارة (${photoUris.length})`
+                  : `Selected Photos (${photoUris.length})`}
               </Text>
-              
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 8 }}>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 12, paddingBottom: 8 }}
+              >
                 {photoUris.map((uri, index) => (
-                  <View key={uri + index} style={{ width: 140, height: 140, borderRadius: 8, overflow: 'hidden', position: 'relative' }}>
-                    <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                  <View
+                    key={uri + index}
+                    style={{
+                      width: 140,
+                      height: 140,
+                      borderRadius: 8,
+                      overflow: 'hidden',
+                      position: 'relative',
+                    }}
+                  >
+                    <Image
+                      source={{ uri }}
+                      style={{ width: '100%', height: '100%' }}
+                      resizeMode="cover"
+                    />
                     <Pressable
                       onPress={() => handleRemovePhoto(index)}
                       style={{
@@ -174,11 +274,35 @@ export const AddProductScreen: React.FC = () => {
                         justifyContent: 'center',
                       }}
                     >
-                      <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: 'bold' }}>✕</Text>
+                      <Text
+                        style={{
+                          color: '#FFFFFF',
+                          fontSize: 12,
+                          fontWeight: 'bold',
+                        }}
+                      >
+                        ✕
+                      </Text>
                     </Pressable>
                     {index === 0 && (
-                      <View style={{ position: 'absolute', bottom: 6, left: 6, backgroundColor: 'rgba(45, 106, 79, 0.9)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                        <Text style={{ color: '#FFFFFF', fontSize: 8, fontWeight: 'bold' }}>
+                      <View
+                        style={{
+                          position: 'absolute',
+                          bottom: 6,
+                          left: 6,
+                          backgroundColor: 'rgba(45, 106, 79, 0.9)',
+                          paddingHorizontal: 6,
+                          paddingVertical: 2,
+                          borderRadius: 4,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: '#FFFFFF',
+                            fontSize: 8,
+                            fontWeight: 'bold',
+                          }}
+                        >
                           {isRTL ? 'الرئيسية' : 'Primary'}
                         </Text>
                       </View>
@@ -188,74 +312,185 @@ export const AddProductScreen: React.FC = () => {
               </ScrollView>
 
               {/* Compact Picker Row to Add More */}
-              <View style={[styles.pickerRow, { flexDirection: isRTL ? 'row-reverse' : 'row', marginTop: 12, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 12 }]}>
-                <Pressable onPress={() => handleSelectPhoto('camera')} style={[styles.actionButton, { backgroundColor: isDark ? '#1E293B' : '#EBF0F5', marginRight: 6 }]}>
+              <View
+                style={[
+                  styles.pickerRow,
+                  {
+                    flexDirection: isRTL ? 'row-reverse' : 'row',
+                    marginTop: 12,
+                    borderTopWidth: 1,
+                    borderTopColor: colors.border,
+                    paddingTop: 12,
+                  },
+                ]}
+              >
+                <Pressable
+                  onPress={() => handleSelectPhoto('camera')}
+                  style={[
+                    styles.actionButton,
+                    {
+                      backgroundColor: isDark ? '#1E293B' : '#EBF0F5',
+                      marginRight: 6,
+                    },
+                  ]}
+                >
                   <Text style={{ fontSize: 16, marginRight: 6 }}>📸</Text>
-                  <Text variant="caption" weight="bold">{isRTL ? 'كاميرا' : 'Camera'}</Text>
+                  <Text variant="caption" weight="bold">
+                    {isRTL ? 'كاميرا' : 'Camera'}
+                  </Text>
                 </Pressable>
-                <Pressable onPress={() => handleSelectPhoto('gallery')} style={[styles.actionButton, { backgroundColor: isDark ? '#1E293B' : '#EBF0F5' }]}>
+                <Pressable
+                  onPress={() => handleSelectPhoto('gallery')}
+                  style={[
+                    styles.actionButton,
+                    { backgroundColor: isDark ? '#1E293B' : '#EBF0F5' },
+                  ]}
+                >
                   <Text style={{ fontSize: 16, marginRight: 6 }}>🖼️</Text>
-                  <Text variant="caption" weight="bold">{isRTL ? 'معرض' : 'Gallery'}</Text>
+                  <Text variant="caption" weight="bold">
+                    {isRTL ? 'معرض' : 'Gallery'}
+                  </Text>
                 </Pressable>
               </View>
             </View>
           ) : (
             <View style={[styles.dashedBorder, { borderColor: colors.border }]}>
               {/* How image upload works — info banner */}
-              <View style={{ backgroundColor: isDark ? '#1A2840' : '#EBF4FF', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 20, width: '100%' }}>
-                <Text variant="caption" color={colors.primary} weight="bold" style={{ marginBottom: 4 }}>
-                  {isRTL ? '📌 كيف تعمل إضافة الصور المتعددة؟' : '📌 How multiple image upload works'}
+              <View
+                style={{
+                  backgroundColor: isDark ? '#1A2840' : '#EBF4FF',
+                  borderRadius: 10,
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  marginBottom: 20,
+                  width: '100%',
+                }}
+              >
+                <Text
+                  variant="caption"
+                  color={colors.primary}
+                  weight="bold"
+                  style={{ marginBottom: 4 }}
+                >
+                  {isRTL
+                    ? '📌 كيف تعمل إضافة الصور المتعددة؟'
+                    : '📌 How multiple image upload works'}
                 </Text>
-                <Text variant="caption" color={colors.textSecondary} style={{ lineHeight: 18 }}>
+                <Text
+                  variant="caption"
+                  color={colors.textSecondary}
+                  style={{ lineHeight: 18 }}
+                >
                   {isRTL
                     ? 'يمكنك اختيار عدة صور من المعرض أو الكاميرا. سيتم حفظها محلياً في جهازك بالكامل وعرضها كمعرض صور متحرك.'
                     : 'You can pick multiple images from camera or gallery. They will be saved entirely to your local device storage and viewed in a sliding gallery carousel.'}
                 </Text>
               </View>
 
-              <View style={[styles.pickerRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+              <View
+                style={[
+                  styles.pickerRow,
+                  { flexDirection: isRTL ? 'row-reverse' : 'row' },
+                ]}
+              >
                 {/* Camera */}
-                <Pressable onPress={() => handleSelectPhoto('camera')} style={styles.pickerItem}>
-                  <View style={[styles.iconCircle, { backgroundColor: isDark ? '#1E293B' : '#EBF0F5' }]}>
+                <Pressable
+                  onPress={() => handleSelectPhoto('camera')}
+                  style={styles.pickerItem}
+                >
+                  <View
+                    style={[
+                      styles.iconCircle,
+                      { backgroundColor: isDark ? '#1E293B' : '#EBF0F5' },
+                    ]}
+                  >
                     <Text style={{ fontSize: 26 }}>📸</Text>
                   </View>
-                  <Text variant="bodyMedium" weight="bold" style={{ marginTop: 8 }}>
+                  <Text
+                    variant="bodyMedium"
+                    weight="bold"
+                    style={{ marginTop: 8 }}
+                  >
                     {isRTL ? 'الكاميرا' : 'Camera'}
                   </Text>
-                  <Text variant="caption" color={colors.textSecondary} style={{ fontSize: 11 }}>
+                  <Text
+                    variant="caption"
+                    color={colors.textSecondary}
+                    style={{ fontSize: 11 }}
+                  >
                     {isRTL ? 'التقاط صورة' : 'Take Photo'}
                   </Text>
                 </Pressable>
 
                 {/* Gallery */}
-                <Pressable onPress={() => handleSelectPhoto('gallery')} style={styles.pickerItem}>
-                  <View style={[styles.iconCircle, { backgroundColor: isDark ? '#1E293B' : '#EBF0F5' }]}>
+                <Pressable
+                  onPress={() => handleSelectPhoto('gallery')}
+                  style={styles.pickerItem}
+                >
+                  <View
+                    style={[
+                      styles.iconCircle,
+                      { backgroundColor: isDark ? '#1E293B' : '#EBF0F5' },
+                    ]}
+                  >
                     <Text style={{ fontSize: 26 }}>🖼️</Text>
                   </View>
-                  <Text variant="bodyMedium" weight="bold" style={{ marginTop: 8 }}>
+                  <Text
+                    variant="bodyMedium"
+                    weight="bold"
+                    style={{ marginTop: 8 }}
+                  >
                     {isRTL ? 'المعرض' : 'Gallery'}
                   </Text>
-                  <Text variant="caption" color={colors.textSecondary} style={{ fontSize: 11 }}>
+                  <Text
+                    variant="caption"
+                    color={colors.textSecondary}
+                    style={{ fontSize: 11 }}
+                  >
                     {isRTL ? 'اختر صوراً' : 'Choose Photos'}
                   </Text>
                 </Pressable>
 
                 {/* Files — also opens image picker (same as gallery on Android/iOS) */}
-                <Pressable onPress={() => handleSelectPhoto('files')} style={styles.pickerItem}>
-                  <View style={[styles.iconCircle, { backgroundColor: isDark ? '#1E293B' : '#EBF0F5' }]}>
+                <Pressable
+                  onPress={() => handleSelectPhoto('files')}
+                  style={styles.pickerItem}
+                >
+                  <View
+                    style={[
+                      styles.iconCircle,
+                      { backgroundColor: isDark ? '#1E293B' : '#EBF0F5' },
+                    ]}
+                  >
                     <Text style={{ fontSize: 26 }}>📁</Text>
                   </View>
-                  <Text variant="bodyMedium" weight="bold" style={{ marginTop: 8 }}>
+                  <Text
+                    variant="bodyMedium"
+                    weight="bold"
+                    style={{ marginTop: 8 }}
+                  >
                     {isRTL ? 'الملفات' : 'Files'}
                   </Text>
-                  <Text variant="caption" color={colors.textSecondary} style={{ fontSize: 11 }}>
+                  <Text
+                    variant="caption"
+                    color={colors.textSecondary}
+                    style={{ fontSize: 11 }}
+                  >
                     {isRTL ? 'تصفح الملفات' : 'Browse Files'}
                   </Text>
                 </Pressable>
               </View>
 
-              <Text variant="caption" color={colors.textSecondary} weight="medium" align="center" style={{ marginTop: 16 }}>
-                {isRTL ? 'اختر صورة أو أكثر من هاتفك' : 'Select one or more images from your phone'}
+              <Text
+                variant="caption"
+                color={colors.textSecondary}
+                weight="medium"
+                align="center"
+                style={{ marginTop: 16 }}
+              >
+                {isRTL
+                  ? 'اختر صورة أو أكثر من هاتفك'
+                  : 'Select one or more images from your phone'}
               </Text>
             </View>
           )}
@@ -267,7 +502,11 @@ export const AddProductScreen: React.FC = () => {
             label={t('productTitleLabel')}
             value={title}
             onChangeText={setTitle}
-            placeholder={isRTL ? 'مثال: مروحة ياماها المائية' : 'e.g. Yamaha Water Impeller'}
+            placeholder={
+              isRTL
+                ? 'مثال: مروحة ياماها المائية'
+                : 'e.g. Yamaha Water Impeller'
+            }
             style={isRTL ? { textAlign: 'right' } : undefined}
           />
 
@@ -299,41 +538,91 @@ export const AddProductScreen: React.FC = () => {
             label={t('notesLabel')}
             value={notes}
             onChangeText={setNotes}
-            placeholder={isRTL ? 'مثال: مواصفات الملاءمة، المحركات المتوافقة...' : 'e.g. Fitment specs, compatible engines...'}
+            placeholder={
+              isRTL
+                ? 'مثال: مواصفات الملاءمة، المحركات المتوافقة...'
+                : 'e.g. Fitment specs, compatible engines...'
+            }
             multiline
             numberOfLines={4}
-            style={[{ height: 90, textAlignVertical: 'top' }, isRTL ? { textAlign: 'right' } : undefined]}
+            style={[
+              { height: 90, textAlignVertical: 'top' },
+              isRTL ? { textAlign: 'right' } : undefined,
+            ]}
           />
         </Card>
 
         {/* Quick Actions Drawer Card */}
-        <Card style={{ marginTop: spacing.md, padding: spacing.md, borderRadius: 16 }}>
-          <Text variant="caption" color={colors.textSecondary} weight="bold" style={{ marginBottom: spacing.sm, textAlign: isRTL ? 'right' : 'left' }}>
+        <Card
+          style={{
+            marginTop: spacing.md,
+            padding: spacing.md,
+            borderRadius: 16,
+          }}
+        >
+          <Text
+            variant="caption"
+            color={colors.textSecondary}
+            weight="bold"
+            style={{
+              marginBottom: spacing.sm,
+              textAlign: isRTL ? 'right' : 'left',
+            }}
+          >
             {isRTL ? 'إجراءات سريعة للصور' : 'QUICK PHOTO ACTIONS'}
           </Text>
-          <View style={[styles.quickActions, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+          <View
+            style={[
+              styles.quickActions,
+              { flexDirection: isRTL ? 'row-reverse' : 'row' },
+            ]}
+          >
             <Pressable
               onPress={() => handleSelectPhoto('camera')}
-              style={({ pressed }) => [styles.actionButton, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', opacity: pressed ? 0.7 : 1 }]}
+              style={({ pressed }) => [
+                styles.actionButton,
+                {
+                  backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
+                  opacity: pressed ? 0.7 : 1,
+                },
+              ]}
             >
               <Text style={{ fontSize: 16, marginRight: 6 }}>📸</Text>
-              <Text variant="caption" weight="bold">{isRTL ? 'التقاط صورة' : 'Take Photo'}</Text>
+              <Text variant="caption" weight="bold">
+                {isRTL ? 'التقاط صورة' : 'Take Photo'}
+              </Text>
             </Pressable>
-            
+
             <Pressable
               onPress={() => handleSelectPhoto('gallery')}
-              style={({ pressed }) => [styles.actionButton, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', opacity: pressed ? 0.7 : 1 }]}
+              style={({ pressed }) => [
+                styles.actionButton,
+                {
+                  backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
+                  opacity: pressed ? 0.7 : 1,
+                },
+              ]}
             >
               <Text style={{ fontSize: 16, marginRight: 6 }}>🖼️</Text>
-              <Text variant="caption" weight="bold">{isRTL ? 'معرض الصور' : 'Choose Gallery'}</Text>
+              <Text variant="caption" weight="bold">
+                {isRTL ? 'معرض الصور' : 'Choose Gallery'}
+              </Text>
             </Pressable>
           </View>
         </Card>
-
       </ScrollView>
 
       {/* Floating Save Button container at bottom */}
-      <View style={[styles.bottomActionBar, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom, 24) }]}>
+      <View
+        style={[
+          styles.bottomActionBar,
+          {
+            backgroundColor: colors.background,
+            borderTopColor: colors.border,
+            paddingBottom: Math.max(insets.bottom, 24),
+          },
+        ]}
+      >
         <Button
           title={t('saveProductBtn')}
           onPress={handleSave}
@@ -482,5 +771,3 @@ const styles = StyleSheet.create({
 });
 
 export default AddProductScreen;
-
-

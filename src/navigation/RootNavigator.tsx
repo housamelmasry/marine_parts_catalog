@@ -1,5 +1,11 @@
-import React from 'react';
-import { StyleSheet, View, Pressable, Platform } from 'react-native';
+import React, { useEffect } from 'react';
+import {
+  StyleSheet,
+  View,
+  Pressable,
+  Platform,
+  BackHandler,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../hooks/useTheme';
 import { useUIStore, Screen } from '../app/store';
@@ -16,7 +22,7 @@ import { BackupScreen } from '../features/backup/screens/BackupScreen';
 
 export const RootNavigator: React.FC = () => {
   const { colors, spacing } = useTheme();
-  const { currentScreen, navigateTo } = useUIStore();
+  const { currentScreen, navigateTo, goBack } = useUIStore();
   const insets = useSafeAreaInsets();
   const { t, isRTL } = useTranslation();
 
@@ -41,12 +47,29 @@ export const RootNavigator: React.FC = () => {
   };
 
   const getActiveTab = (): 'home' | 'add' | 'settings' => {
-    if (currentScreen === 'settings' || currentScreen === 'backup') return 'settings';
+    if (currentScreen === 'settings' || currentScreen === 'backup')
+      return 'settings';
     if (currentScreen === 'add-product') return 'add';
     return 'home';
   };
 
   const activeTab = getActiveTab();
+
+  useEffect(() => {
+    const onBackPress = () => {
+      if (currentScreen !== 'home') {
+        goBack();
+        return true;
+      }
+      return true; // prevent app exit on Android
+    };
+
+    const subscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      onBackPress,
+    );
+    return () => subscription.remove();
+  }, [currentScreen, goBack]);
 
   const handleTabPress = (tab: 'home' | 'add' | 'settings') => {
     if (tab === 'home') {
@@ -61,9 +84,7 @@ export const RootNavigator: React.FC = () => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Active Screen Shell */}
-      <View style={styles.screenContainer}>
-        {renderActiveScreen()}
-      </View>
+      <View style={styles.screenContainer}>{renderActiveScreen()}</View>
 
       {/* Floating Bottom Tab Bar matching mockup exactly */}
       <View
@@ -83,7 +104,9 @@ export const RootNavigator: React.FC = () => {
           onPress={() => handleTabPress('home')}
           style={styles.tabItem}
         >
-          <Text align="center" style={styles.tabIcon}>🏠</Text>
+          <Text align="center" style={styles.tabIcon}>
+            🏠
+          </Text>
           <Text
             variant="caption"
             weight="bold"
@@ -94,11 +117,10 @@ export const RootNavigator: React.FC = () => {
         </Pressable>
 
         {/* Add Tab */}
-        <Pressable
-          onPress={() => handleTabPress('add')}
-          style={styles.tabItem}
-        >
-          <Text align="center" style={styles.tabIcon}>➕</Text>
+        <Pressable onPress={() => handleTabPress('add')} style={styles.tabItem}>
+          <Text align="center" style={styles.tabIcon}>
+            ➕
+          </Text>
           <Text
             variant="caption"
             weight="bold"
@@ -113,11 +135,15 @@ export const RootNavigator: React.FC = () => {
           onPress={() => handleTabPress('settings')}
           style={styles.tabItem}
         >
-          <Text align="center" style={styles.tabIcon}>⚙️</Text>
+          <Text align="center" style={styles.tabIcon}>
+            ⚙️
+          </Text>
           <Text
             variant="caption"
             weight="bold"
-            color={activeTab === 'settings' ? colors.primary : colors.textSecondary}
+            color={
+              activeTab === 'settings' ? colors.primary : colors.textSecondary
+            }
           >
             {t('settings')}
           </Text>

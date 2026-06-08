@@ -10,6 +10,7 @@ import {
   FlatList,
   Dimensions,
   ActivityIndicator,
+  PermissionsAndroid,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -59,10 +60,37 @@ export const ProductDetailScreen: React.FC = () => {
 
   if (!selectedProduct) return null;
 
+  const requestCameraPermission = async (): Promise<boolean> => {
+    if (Platform.OS !== 'android') return true;
+
+    const granted = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.CAMERA,
+      {
+        title: 'Camera Permission',
+        message: 'This app needs camera access to take product photos.',
+        buttonPositive: 'OK',
+        buttonNegative: 'Cancel',
+      },
+    );
+
+    return granted === PermissionsAndroid.RESULTS.GRANTED;
+  };
+
   const handleSelectPhoto = async (source: 'camera' | 'gallery') => {
     try {
       let result;
       if (source === 'camera') {
+        const granted = await requestCameraPermission();
+        if (!granted) {
+          Alert.alert(
+            isRTL ? 'أذونات الكاميرا مطلوبة' : 'Camera Permission Required',
+            isRTL
+              ? 'يرجى تمكين إذن الكاميرا من إعدادات التطبيق لتتمكن من التقاط الصور.'
+              : 'Please enable camera permission in app settings to take photos.',
+          );
+          return;
+        }
+
         const { launchCamera } = require('react-native-image-picker');
         result = await launchCamera({
           mediaType: 'photo',
